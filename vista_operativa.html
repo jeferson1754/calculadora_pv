@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>REVESOL - Análisis de Materiales con Buscador</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    
+    <!-- SELECT2 CSS + TEMA BOOTSTRAP 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+
+    <style>
+        body { background-color: #f8f9fa; font-family: 'Segoe UI', Tahoma, sans-serif; }
+        .header-bg { background-color: #1f497d; color: white; }
+        .card-filter { border-left: 4px solid #0d6efd; background-color: #ffffff; }
+        td.details-control { cursor: pointer; text-align: center; font-size: 1.2rem; color: #0d6efd; }
+        tr.shown td.details-control { color: #dc3545; }
+        .subtable { background-color: #f1f3f5; font-size: 0.85rem; }
+        
+        /* Ajuste de altura para Select2 con Bootstrap 5 */
+        .select2-container--bootstrap-5 .select2-selection {
+            font-size: 0.875rem;
+            min-height: 31px;
+        }
+    </style>
+</head>
+<body class="p-4">
+
+    <!-- Encabezado -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body header-bg rounded-3 p-3">
+            <h4 class="m-0 fw-bold text-white">Sistema Calculadora PV</h4>
+            <small class="text-white-50">Escriba dentro de los selectores para buscar rápidamente por Cliente, Pedido (PD) o Producto.</small>
+
+            
+            <div class="text-end">
+                <span class="badge bg-light text-dark p-2 fs-6 shadow-sm">
+                    <i class="bi bi-clock-history text-primary me-1"></i> 
+                    <strong>Última ejecución:</strong> 
+                    <span id="lblUltimaEjecucion" class="text-primary fw-bold">Cargando...</span>
+                </span>
+            </div>
+
+        </div>
+        <div class="d-flex justify-content-between align-items-center mb-4 p-3 bg-white shadow-sm rounded-3">
+            <div>
+              
+                <small class="text-muted">Rango SAP Activo: <span id="lblRangoActivo" class="fw-bold text-dark">Cargando...</span></small>
+            </div>
+            
+            <!-- BOTÓN PARA ABRIR EL MODAL -->
+            <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalFechasSAP">
+                <i class="bi bi-calendar-range"></i> Ajustar Fechas SAP
+            </button>
+        
+
+
+        </div>
+    </div>
+
+    <!-- MODAL DE CONFIGURACIÓN DE FECHAS SAP -->
+    <div class="modal fade" id="modalFechasSAP" tabindex="-1" aria-labelledby="modalFechasLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title id="modalFechasLabel"><i class="bi bi-gear-fill me-2"></i> Parámetros de Extracción SAP</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <form id="formFechasSAP">
+                    <div class="modal-body">
+                        <p class="text-muted small mb-3">
+                            Defina el rango de fechas para la consulta masiva en la transacción inicial (<code>ZSD_0001</code>). Estos valores se guardan en MySQL.
+                        </p>
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="inputFechaDesde" class="form-label fw-bold small">Fecha Desde:</label>
+                                <input type="date" class="form-control" id="inputFechaDesde" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="inputFechaHasta" class="form-label fw-bold small">Fecha Hasta:</label>
+                                <input type="date" class="form-control" id="inputFechaHasta" required>
+                            </div>
+                        </div>
+
+                        <!-- Alerta de Respuesta -->
+                        <div id="alertModal" class="alert d-none mt-3 p-2 small" role="alert"></div>
+                    </div>
+
+                    <div class="modal-footer bg-light">
+                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" id="btnGuardarFechas" class="btn btn-primary btn-sm">
+                            <i class="bi bi-save"></i> Guardar en BD
+                        </button>
+                    </div>
+                </form>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- PANEL DE FILTROS CON BUSCADOR DENTRO DEL SELECT -->
+    <div class="card card-filter shadow-sm mb-4">
+        <div class="card-body p-3">
+            <h6 class="fw-bold text-primary mb-3"><i class="bi bi-funnel-fill"></i> Seleccionar Criterios de Búsqueda:</h6>
+            <div class="row g-3">
+                
+                <!-- 1. Cliente -->
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold small">Cliente:</label>
+                    <select id="selectCliente" class="form-select form-select-sm select2-busqueda">
+                        <option value="">-- Buscar Cliente --</option>
+                    </select>
+                </div>
+
+                <!-- 2. PD (Pedido de Venta) -->
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold small">PD (Pedido de Venta):</label>
+                    <select id="selectPD" class="form-select form-select-sm select2-busqueda">
+                        <option value="">-- Buscar Pedido --</option>
+                    </select>
+                </div>
+
+                <!-- 3. Producto (Material Principal) -->
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold small">Producto (Cód. SAP):</label>
+                    <select id="selectProducto" class="form-select form-select-sm select2-busqueda">
+                        <option value="">-- Buscar Producto --</option>
+                    </select>
+                </div>
+
+                <!-- 4. Grupo de Pedidos -->
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold small">Grupo de Pedidos / Estado:</label>
+                    <select id="selectGrupo" class="form-select form-select-sm select2-busqueda">
+                        <option value="">-- Todos los Grupos --</option>
+                        <option value="PRODUCTIVO">PRODUCTIVO (BOM Completa)</option>
+                        <option value="REVISIÓN 37">REVISIÓN MATERIAL 37</option>
+                    </select>
+                </div>
+
+            </div>
+
+            <div class="d-flex justify-content-end mt-3 gap-2">
+                <button id="btnLimpiar" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-counterclockwise"></i> Limpiar Filtros</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TABLA DE RESULTADOS -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-3">
+            <div class="table-responsive">
+                <table id="tablaPedidos" class="table table-hover table-bordered align-middle w-100 fs-6">
+                    <thead class="table-dark text-center">
+                        <tr>
+                            <th style="width: 40px;"></th>
+                            <th>Cliente</th>
+                            <th>PD (Pedido)</th>
+                            <th>Pos.</th>
+                            <th>Producto SAP</th>
+                            <th>Ctd. Pedido</th>
+                            <th>Valor Neto</th>
+                            <th>Moneda</th>
+                            <th>Fecha Probable</th>
+                            <th>Grupo / Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPTS -->
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+    
+    <!-- LIBRERÍA SELECT2 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+    <script>
+
+        // Convertir formato SAP DD.MM.YYYY -> HTML YYYY-MM-DD
+        function sapAFechaHtml(fechaSap) {
+            if (!fechaSap) return '';
+            var partes = fechaSap.split('.');
+            return partes.length === 3 ? partes[2] + '-' + partes[1] + '-' + partes[0] : '';
+        }
+
+        // Cargar fechas actuales desde MySQL al iniciar
+        function cargarFechasSAP() {
+            $.get('api_parametros.php', function(res) {
+                if (res.status === 'success' && res.data) {
+                    var fd = res.data.FECHA_DESDE || '01.01.2026';
+                    var fh = res.data.FECHA_HASTA || '31.12.2026';
+
+                    // Actualizar etiquetas en pantalla
+                    $('#lblRangoActivo').text(fd + ' al ' + fh);
+
+                    // Cargar valores en el formulario del modal
+                    $('#inputFechaDesde').val(sapAFechaHtml(fd));
+                    $('#inputFechaHasta').val(sapAFechaHtml(fh));
+                }
+            });
+        }
+
+        function formatearDetalleBOM(row) {
+            var componentes = row.componentes;
+
+            if (!componentes || componentes.length === 0) {
+                return '<div class="p-3 text-muted italic bg-light rounded"><i class="bi bi-info-circle"></i> Sin componentes BOM registrados (Material 37 o sin estructura).</div>';
+            }
+
+            var html = '<div class="p-3 subtable rounded-3 border">' +
+                       '<h6 class="fw-bold text-primary mb-2"><i class="bi bi-diagram-3"></i> Desglose de Materiales Internos (Producto: ' + row.Producto + ')</h6>' +
+                       '<table class="table table-sm table-striped table-bordered bg-white mb-0">' +
+                       '<thead class="table-secondary text-center">' +
+                       '<tr>' +
+                       '<th>Nivel</th>' +
+                       '<th>Cód. Componente</th>' +
+                       '<th>Descripción Componente</th>' +
+                       '<th>Cant. Unitaria</th>' +
+                       '<th>UMB</th>' +
+                       '<th>Cant. Total Requerida</th>' +
+                       '</tr>' +
+                       '</thead><tbody>';
+
+            componentes.forEach(function(c) {
+                var nivel = parseInt(c.NivelExplosion || 1);
+                var sangria = '&nbsp;'.repeat((nivel - 1) * 5);
+                var conector = nivel > 1 ? '└─ ' : '';
+                
+                var badgeColor = nivel === 1 ? 'bg-info text-dark' : (nivel === 2 ? 'bg-warning text-dark' : 'bg-danger');
+
+                var cantUnit = parseFloat(String(c.CantidadBOM).replace(',', '.')).toLocaleString('es-CL', {minimumFractionDigits: 2});
+                var cantTotal = parseFloat(String(c.CantidadTotal).replace(',', '.')).toLocaleString('es-CL', {minimumFractionDigits: 2});
+
+                html += '<tr>' +
+                        '<td>' + sangria + conector + '<span class="badge ' + badgeColor + '">Nivel ' + nivel + '</span></td>' +
+                        '<td class="fw-bold text-center"><code>' + c.Componente + '</code></td>' +
+                        '<td>' + c.DescComponente + '</td>' +
+                        '<td class="text-end">' + cantUnit + '</td>' +
+                        '<td class="text-center">' + c.UMB + '</td>' +
+                        '<td class="text-end fw-bold text-success">' + cantTotal + ' ' + c.UMB + '</td>' +
+                        '</tr>';
+            });
+
+            html += '</tbody></table></div>';
+            return html;
+        }
+
+        $(document).ready(function() {
+            cargarFechasSAP();
+            // Inicializar Select2 en los combos para activar el buscador interno
+            $('.select2-busqueda').select2({
+                theme: 'bootstrap-5',
+                width: '100%',
+                placeholder: 'Seleccione o escriba...',
+                allowClear: true
+            });
+
+            var tabla = $('#tablaPedidos').DataTable({
+                "ajax": {
+                    "url": "api_vista_operativa.php",
+                    "dataSrc": function(json) {
+                        var clientes = new Set();
+                        var pds = new Set();
+                        var productos = new Set();
+
+                        json.data.forEach(function(item) {
+                            if (item.Cliente) clientes.add(item.Cliente);
+                            if (item.Pedido) pds.add(item.Pedido);
+                            if (item.Producto) productos.add(item.Producto);
+                        });
+
+                        // Poblar opciones
+                        Array.from(clientes).sort().forEach(function(c) {
+                            $('#selectCliente').append('<option value="' + c + '">' + c + '</option>');
+                        });
+                        Array.from(pds).sort().forEach(function(p) {
+                            $('#selectPD').append('<option value="' + p + '">' + p + '</option>');
+                        });
+                        Array.from(productos).sort().forEach(function(pr) {
+                            $('#selectProducto').append('<option value="' + pr + '">' + pr + '</option>');
+                        });
+
+                        return json.data;
+                    }
+                },
+                "columns": [
+                    {
+                        "className": 'details-control',
+                        "orderable": false,
+                        "data": null,
+                        "defaultContent": '<i class="bi bi-plus-circle-fill"></i>'
+                    },
+                    { "data": "Cliente" },
+                    { "data": "Pedido", "className": "text-center fw-bold" },
+                    { "data": "PosPed", "className": "text-center" },
+                    { "data": "Producto", "className": "text-center fw-bold text-primary" },
+                    { "data": "CtdPed", "className": "text-end fw-bold" },
+                    { 
+                        "data": "ValorNeto", 
+                        "className": "text-end",
+                        "render": function(data) {
+                            if (!data) return '$ 0';
+                            var num = parseFloat(String(data).replace(/\./g, '').replace(',', '.'));
+                            return isNaN(num) ? '$ 0' : '$ ' + Math.round(num).toLocaleString('es-CL');
+                        }
+                    },
+                    { "data": "Moneda", "className": "text-center" },
+                    { 
+                        "data": "FechaProbable", 
+                        "className": "text-center",
+                        "render": function(data, type, row) {
+                            if (!data) return '';
+
+                            // Si DataTables pide ordenar ('sort') o filtrar ('type'), convertimos "DD.MM.YYYY" -> "YYYYMMDD"
+                            if (type === 'sort' || type === 'type') {
+                                var partes = String(data).trim().split('.');
+                                if (partes.length === 3) {
+                                    // Genera un formato ISO seguro para ordenamiento: "2026-08-24"
+                                    return partes[2] + '-' + partes[1] + '-' + partes[0];
+                                }
+                                return data;
+                            }
+
+                            // Para la vista normal del usuario ('display'), muestra la fecha tal como viene
+                            return data;
+                        }
+                    },
+                    { 
+                        "data": "Estado", 
+                        "className": "text-center",
+                        "render": function(data) {
+                            return data === 'PRODUCTIVO' 
+                                ? '<span class="badge bg-success">PRODUCTIVO</span>' 
+                                : '<span class="badge bg-warning text-dark">REVISIÓN 37</span>';
+                        }
+                    }
+                ],
+                "language": {
+                    "url": "https://cdn.datatables.net/plug-ins/3.0.2/i18n/es-ES.json"
+                },
+                "pageLength": 15
+            });
+
+            // LISTENERS DE FILTRADO CON SELECT2
+            $('#selectCliente').on('change', function() { tabla.column(1).search(this.value).draw(); });
+            $('#selectPD').on('change', function() { tabla.column(2).search(this.value).draw(); });
+            $('#selectProducto').on('change', function() { tabla.column(4).search(this.value).draw(); });
+            $('#selectGrupo').on('change', function() { tabla.column(9).search(this.value).draw(); });
+
+            // Botón Limpiar (resetea los Select2)
+            $('#btnLimpiar').on('click', function() {
+                $('.select2-busqueda').val(null).trigger('change');
+                tabla.search('').columns().search('').draw();
+            });
+
+            // Colapsable de detalles BOM
+            $('#tablaPedidos tbody').on('click', 'td.details-control', function() {
+                var tr = $(this).closest('tr');
+                var row = tabla.row(tr);
+
+                if (row.child.isShown()) {
+                    row.child.hide();
+                    tr.removeClass('shown');
+                    $(this).html('<i class="bi bi-plus-circle-fill"></i>');
+                } else {
+                    row.child(formatearDetalleBOM(row.data())).show();
+                    tr.addClass('shown');
+                    $(this).html('<i class="bi bi-dash-circle-fill"></i>');
+                }
+            });
+        });
+
+        function cargarUltimaEjecucion() {
+            $.get('api_ultima_ejecucion.php', function(res) {
+                if (res.status === 'success' && res.data) {
+                    var reg = res.data;
+                    
+                    // Construye un texto limpio con Fecha, Duración y Estado
+                    var estadoBadge = reg.estado === 'EXITOSO' 
+                        ? '<span class="badge bg-success ms-1">EXITOSO</span>' 
+                        : '<span class="badge bg-danger ms-1">ERROR</span>';
+
+                    var texto = reg.fecha_inicio + ' (' + reg.duracion + ')' + estadoBadge;
+
+                    $('#lblUltimaEjecucion').html(texto);
+                } else {
+                    $('#lblUltimaEjecucion').html('<span class="text-muted">Sin registros</span>');
+                }
+            });
+        }
+
+        $(document).ready(function() {
+            cargarUltimaEjecucion();
+        });
+
+        // Guardar cambios del Modal en MySQL
+            $('#formFechasSAP').on('submit', function(e) {
+                e.preventDefault();
+
+                var fd = $('#inputFechaDesde').val();
+                var fh = $('#inputFechaHasta').val();
+
+                $('#btnGuardarFechas').prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Guardando...');
+
+                $.post('api_parametros.php', { fecha_desde: fd, fecha_hasta: fh }, function(res) {
+                    $('#btnGuardarFechas').prop('disabled', false).html('<i class="bi bi-save"></i> Guardar en BD');
+
+                    if (res.status === 'success') {
+                        $('#alertModal').removeClass('d-none alert-danger').addClass('alert-success').text(res.message);
+                        
+                        // Actualizar vista principal
+                        $('#lblRangoActivo').text(res.fecha_desde_sap + ' al ' + res.fecha_hasta_sap);
+
+                        setTimeout(function() {
+                            $('#modalFechasSAP').modal('hide');
+                            $('#alertModal').addClass('d-none');
+                        }, 1200);
+                    } else {
+                        $('#alertModal').removeClass('d-none alert-success').addClass('alert-danger').text(res.message);
+                    }
+                });
+            });
+    </script>
+</body>
+</html>
