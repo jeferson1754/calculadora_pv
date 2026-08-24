@@ -43,12 +43,13 @@ salida_excel_operativo = base_dir / "VISTA_OPERATIVA_PEDIDOS_BOM.xlsx"
 columnas_requeridas = [
     "Nombre",
     "Pedido",
-    "PosPed",
+    "Pos.",
     "Valor neto",
     "Mon.",
     "Ctd.ped.",
     "Material",
     "Fecha Probable",
+    "Origen",   
 ]
 
 # --- CONFIGURACIÓN DE CONEXIÓN MYSQL (XAMPP) ---
@@ -357,6 +358,7 @@ def procesar_excel_productivo_1(columnas_requeridas=columnas_requeridas, archivo
     if "Doc.venta" in df.columns and "Pedido" not in df.columns:
         df.rename(columns={"Doc.venta": "Pedido"}, inplace=True)
     # Limpiar nombres de columnas
+    
     df.columns = df.columns.str.strip()
 
     # Aplicar limpieza a todas las columnas

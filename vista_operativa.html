@@ -167,7 +167,8 @@
                             <th>Pos.</th>
                             <th>Producto SAP</th>
                             <th>Ctd. Pedido</th>
-                            <th>Valor Neto</th>
+                            <th>Valor Neto Total</th>
+                            <th>Neto Unitario</th> <!-- NUEVA COLUMNA -->
                             <th>Moneda</th>
                             <th>Fecha Probable</th>
                             <th>Grupo / Estado</th>
@@ -316,6 +317,34 @@
                             if (!data) return '$ 0';
                             var num = parseFloat(String(data).replace(/\./g, '').replace(',', '.'));
                             return isNaN(num) ? '$ 0' : '$ ' + Math.round(num).toLocaleString('es-CL');
+                        }
+                    },
+                    { 
+                        // Columna calculada: Valor Neto Unitario = Valor Neto Total / Cantidad
+                        "data": null, 
+                        "className": "text-end fw-semibold text-secondary",
+                        "render": function(data, type, row) {
+                            var strNeto = String(row.ValorNeto || "0").trim().replace(/\./g, '').replace(',', '.');
+                            var strCant = String(row.CtdPed || "0").trim().replace(/\./g, '').replace(',', '.');
+
+                            var netoTotal = parseFloat(strNeto);
+                            var cantidad = parseFloat(strCant);
+
+                            // Validación para evitar división por cero o NaN
+                            if (isNaN(netoTotal) || isNaN(cantidad) || cantidad <= 0) {
+                                return '$ 0';
+                            }
+
+                            // Cálculo: Valor Neto Total / Cantidad
+                            var netoUnitario = Math.round(netoTotal / cantidad);
+
+                            // Para ordenamiento o exportación en Excel
+                            if (type === 'sort' || type === 'type') {
+                                return netoUnitario;
+                            }
+
+                            // Retorno visual en pesos chilenos
+                            return '$ ' + netoUnitario.toLocaleString('es-CL');
                         }
                     },
                     { "data": "Moneda", "className": "text-center" },

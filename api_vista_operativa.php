@@ -17,7 +17,8 @@ try {
         SELECT DISTINCT 
             COALESCE(Nombre, '') AS Cliente,
             Pedido,
-            PosPed,
+            `Pos.`,
+            `RespCtrPr.`,
             Material AS Producto,
             `Ctd.ped.` AS CtdPed,
             `Valor neto` AS ValorNeto,
@@ -31,7 +32,8 @@ try {
         SELECT DISTINCT 
             COALESCE(Nombre, '') AS Cliente,
             Pedido,
-            PosPed,
+            `Pos.`,
+            `RespCtrPr.`,
             Material AS Producto,
             `Ctd.ped.` AS CtdPed,
             `Valor neto` AS ValorNeto,
