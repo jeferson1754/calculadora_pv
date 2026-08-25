@@ -8,6 +8,7 @@
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.bootstrap5.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     
     <!-- SELECT2 CSS + TEMA BOOTSTRAP 5 -->
@@ -21,8 +22,6 @@
         td.details-control { cursor: pointer; text-align: center; font-size: 1.2rem; color: #0d6efd; }
         tr.shown td.details-control { color: #dc3545; }
         .subtable { background-color: #f1f3f5; font-size: 0.85rem; }
-        
-        /* Ajuste de altura para Select2 con Bootstrap 5 */
         .select2-container--bootstrap-5 .select2-selection {
             font-size: 0.875rem;
             min-height: 31px;
@@ -34,32 +33,30 @@
     <!-- Encabezado -->
     <div class="card border-0 shadow-sm mb-4">
         <div class="card-body header-bg rounded-3 p-3">
-            <h4 class="m-0 fw-bold text-white">Sistema Calculadora PV</h4>
-            <small class="text-white-50">Escriba dentro de los selectores para buscar rápidamente por Cliente, Pedido (PD) o Producto.</small>
-
-            
-            <div class="text-end">
-                <span class="badge bg-light text-dark p-2 fs-6 shadow-sm">
-                    <i class="bi bi-clock-history text-primary me-1"></i> 
-                    <strong>Última ejecución:</strong> 
-                    <span id="lblUltimaEjecucion" class="text-primary fw-bold">Cargando...</span>
-                </span>
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <div>
+                    <h4 class="m-0 fw-bold text-white">Sistema Calculadora PV</h4>
+                    <small class="text-white-50">Escriba dentro de los selectores para buscar rápidamente por Cliente, Pedido (PD) o Producto.</small>
+                </div>
+                
+                <div class="text-end">
+                    <span class="badge bg-light text-dark p-2 fs-6 shadow-sm">
+                        <i class="bi bi-clock-history text-primary me-1"></i> 
+                        <strong>Última ejecución:</strong> 
+                        <span id="lblUltimaEjecucion" class="text-primary fw-bold">Cargando...</span>
+                    </span>
+                </div>
             </div>
 
-        </div>
-        <div class="d-flex justify-content-between align-items-center mb-4 p-3 bg-white shadow-sm rounded-3">
-            <div>
-              
-                <small class="text-muted">Rango SAP Activo: <span id="lblRangoActivo" class="fw-bold text-dark">Cargando...</span></small>
+            <div class="d-flex justify-content-between align-items-center bg-white text-dark p-2 rounded-2 shadow-sm mt-2">
+                <div>
+                    <small class="text-muted"><i class="bi bi-calendar3 me-1"></i>Rango SAP Activo: <span id="lblRangoActivo" class="fw-bold text-dark">Cargando...</span></small>
+                </div>
+                
+                <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalFechasSAP">
+                    <i class="bi bi-calendar-range me-1"></i> Ajustar Fechas SAP
+                </button>
             </div>
-            
-            <!-- BOTÓN PARA ABRIR EL MODAL -->
-            <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalFechasSAP">
-                <i class="bi bi-calendar-range"></i> Ajustar Fechas SAP
-            </button>
-        
-
-
         </div>
     </div>
 
@@ -67,9 +64,8 @@
     <div class="modal fade" id="modalFechasSAP" tabindex="-1" aria-labelledby="modalFechasLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
-                
                 <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title id="modalFechasLabel"><i class="bi bi-gear-fill me-2"></i> Parámetros de Extracción SAP</h5>
+                    <h5 class="modal-title" id="modalFechasLabel"><i class="bi bi-gear-fill me-2"></i> Parámetros de Extracción SAP</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
 
@@ -90,29 +86,25 @@
                             </div>
                         </div>
 
-                        <!-- Alerta de Respuesta -->
                         <div id="alertModal" class="alert d-none mt-3 p-2 small" role="alert"></div>
                     </div>
 
                     <div class="modal-footer bg-light">
                         <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
                         <button type="submit" id="btnGuardarFechas" class="btn btn-primary btn-sm">
-                            <i class="bi bi-save"></i> Guardar en BD
+                            <i class="bi bi-save me-1"></i> Guardar en BD
                         </button>
                     </div>
                 </form>
-
             </div>
         </div>
     </div>
 
-    <!-- PANEL DE FILTROS CON BUSCADOR DENTRO DEL SELECT -->
+    <!-- PANEL DE FILTROS -->
     <div class="card card-filter shadow-sm mb-4">
         <div class="card-body p-3">
-            <h6 class="fw-bold text-primary mb-3"><i class="bi bi-funnel-fill"></i> Seleccionar Criterios de Búsqueda:</h6>
+            <h6 class="fw-bold text-primary mb-3"><i class="bi bi-funnel-fill me-1"></i> Seleccionar Criterios de Búsqueda:</h6>
             <div class="row g-3">
-                
-                <!-- 1. Cliente -->
                 <div class="col-md-3">
                     <label class="form-label fw-semibold small">Cliente:</label>
                     <select id="selectCliente" class="form-select form-select-sm select2-busqueda">
@@ -120,7 +112,6 @@
                     </select>
                 </div>
 
-                <!-- 2. PD (Pedido de Venta) -->
                 <div class="col-md-3">
                     <label class="form-label fw-semibold small">PD (Pedido de Venta):</label>
                     <select id="selectPD" class="form-select form-select-sm select2-busqueda">
@@ -128,7 +119,6 @@
                     </select>
                 </div>
 
-                <!-- 3. Producto (Material Principal) -->
                 <div class="col-md-3">
                     <label class="form-label fw-semibold small">Producto (Cód. SAP):</label>
                     <select id="selectProducto" class="form-select form-select-sm select2-busqueda">
@@ -136,7 +126,6 @@
                     </select>
                 </div>
 
-                <!-- 4. Grupo de Pedidos -->
                 <div class="col-md-3">
                     <label class="form-label fw-semibold small">Grupo de Pedidos / Estado:</label>
                     <select id="selectGrupo" class="form-select form-select-sm select2-busqueda">
@@ -145,11 +134,21 @@
                         <option value="REVISIÓN 37">REVISIÓN MATERIAL 37</option>
                     </select>
                 </div>
-
             </div>
 
-            <div class="d-flex justify-content-end mt-3 gap-2">
-                <button id="btnLimpiar" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-counterclockwise"></i> Limpiar Filtros</button>
+            <!-- BOTONES DE ACCIÓN PRINCIPALES -->
+            <div class="d-flex justify-content-between align-items-center mt-3 pt-2 border-top">
+                <div>
+                    <!-- BOTÓN PARA EXPANDIR/COLAPSAR TODAS LAS EXPLOSIONES -->
+                    <button id="btnToggleAll" class="btn btn-outline-primary btn-sm me-2">
+                        <i class="bi bi-node-plus me-1"></i> Expandir Todas las Estructuras BOM
+                    </button>
+                </div>
+                <div class="d-flex gap-2">
+                    <button id="btnLimpiar" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-arrow-counterclockwise me-1"></i> Limpiar Filtros
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -165,10 +164,12 @@
                             <th>Cliente</th>
                             <th>PD (Pedido)</th>
                             <th>Pos.</th>
+                            <th>Convenio Precio</th>
+                            <th>Resp. CtrProd.</th>
                             <th>Producto SAP</th>
                             <th>Ctd. Pedido</th>
                             <th>Valor Neto Total</th>
-                            <th>Neto Unitario</th> <!-- NUEVA COLUMNA -->
+                            <th>Neto Unitario</th>
                             <th>Moneda</th>
                             <th>Fecha Probable</th>
                             <th>Grupo / Estado</th>
@@ -180,37 +181,55 @@
         </div>
     </div>
 
-    <!-- SCRIPTS -->
+    <!-- SCRIPTS BASE -->
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- DATATABLES + BUTTONS EXCEL -->
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.bootstrap5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
     
-    <!-- LIBRERÍA SELECT2 JS -->
+    <!-- SELECT2 JS -->
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
     <script>
+        var estadoExpandido = false;
 
-        // Convertir formato SAP DD.MM.YYYY -> HTML YYYY-MM-DD
         function sapAFechaHtml(fechaSap) {
             if (!fechaSap) return '';
             var partes = fechaSap.split('.');
             return partes.length === 3 ? partes[2] + '-' + partes[1] + '-' + partes[0] : '';
         }
 
-        // Cargar fechas actuales desde MySQL al iniciar
         function cargarFechasSAP() {
             $.get('api_parametros.php', function(res) {
                 if (res.status === 'success' && res.data) {
                     var fd = res.data.FECHA_DESDE || '01.01.2026';
                     var fh = res.data.FECHA_HASTA || '31.12.2026';
 
-                    // Actualizar etiquetas en pantalla
                     $('#lblRangoActivo').text(fd + ' al ' + fh);
-
-                    // Cargar valores en el formulario del modal
                     $('#inputFechaDesde').val(sapAFechaHtml(fd));
                     $('#inputFechaHasta').val(sapAFechaHtml(fh));
+                }
+            });
+        }
+
+        function cargarUltimaEjecucion() {
+            $.get('api_ultima_ejecucion.php', function(res) {
+                if (res.status === 'success' && res.data) {
+                    var reg = res.data;
+                    var estadoBadge = reg.estado === 'EXITOSO' 
+                        ? '<span class="badge bg-success ms-1">EXITOSO</span>' 
+                        : '<span class="badge bg-danger ms-1">ERROR</span>';
+
+                    var texto = reg.fecha_inicio + ' (' + reg.duracion + ')' + estadoBadge;
+                    $('#lblUltimaEjecucion').html(texto);
+                } else {
+                    $('#lblUltimaEjecucion').html('<span class="text-muted">Sin registros</span>');
                 }
             });
         }
@@ -223,7 +242,7 @@
             }
 
             var html = '<div class="p-3 subtable rounded-3 border">' +
-                       '<h6 class="fw-bold text-primary mb-2"><i class="bi bi-diagram-3"></i> Desglose de Materiales Internos (Producto: ' + row.Producto + ')</h6>' +
+                       '<h6 class="fw-bold text-primary mb-2"><i class="bi bi-diagram-3 me-1"></i> Desglose de Materiales Internos (Producto: ' + row.Producto + ')</h6>' +
                        '<table class="table table-sm table-striped table-bordered bg-white mb-0">' +
                        '<thead class="table-secondary text-center">' +
                        '<tr>' +
@@ -262,7 +281,8 @@
 
         $(document).ready(function() {
             cargarFechasSAP();
-            // Inicializar Select2 en los combos para activar el buscador interno
+            cargarUltimaEjecucion();
+
             $('.select2-busqueda').select2({
                 theme: 'bootstrap-5',
                 width: '100%',
@@ -271,6 +291,15 @@
             });
 
             var tabla = $('#tablaPedidos').DataTable({
+                "dom": '<"d-flex justify-content-between align-items-center mb-3"Bf>rt<"d-flex justify-content-between align-items-center mt-3"lip>',
+                "buttons": [
+                    {
+                        extend: 'excelHtml5',
+                        text: '<i class="bi bi-file-earmark-excel me-1"></i> Descargar Base En Excel',
+                        className: 'btn btn-success btn-sm fw-bold',
+                        title: 'REVESOL_Vista_Operativa_Pedidos'
+                    }
+                ],
                 "ajax": {
                     "url": "api_vista_operativa.php",
                     "dataSrc": function(json) {
@@ -278,24 +307,25 @@
                         var pds = new Set();
                         var productos = new Set();
 
-                        json.data.forEach(function(item) {
-                            if (item.Cliente) clientes.add(item.Cliente);
-                            if (item.Pedido) pds.add(item.Pedido);
-                            if (item.Producto) productos.add(item.Producto);
-                        });
+                        if (json.data) {
+                            json.data.forEach(function(item) {
+                                if (item.Cliente) clientes.add(item.Cliente);
+                                if (item.Pedido) pds.add(item.Pedido);
+                                if (item.Producto) productos.add(item.Producto);
+                            });
 
-                        // Poblar opciones
-                        Array.from(clientes).sort().forEach(function(c) {
-                            $('#selectCliente').append('<option value="' + c + '">' + c + '</option>');
-                        });
-                        Array.from(pds).sort().forEach(function(p) {
-                            $('#selectPD').append('<option value="' + p + '">' + p + '</option>');
-                        });
-                        Array.from(productos).sort().forEach(function(pr) {
-                            $('#selectProducto').append('<option value="' + pr + '">' + pr + '</option>');
-                        });
+                            Array.from(clientes).sort().forEach(function(c) {
+                                $('#selectCliente').append('<option value="' + c + '">' + c + '</option>');
+                            });
+                            Array.from(pds).sort().forEach(function(p) {
+                                $('#selectPD').append('<option value="' + p + '">' + p + '</option>');
+                            });
+                            Array.from(productos).sort().forEach(function(pr) {
+                                $('#selectProducto').append('<option value="' + pr + '">' + pr + '</option>');
+                            });
+                        }
 
-                        return json.data;
+                        return json.data || [];
                     }
                 },
                 "columns": [
@@ -308,6 +338,20 @@
                     { "data": "Cliente" },
                     { "data": "Pedido", "className": "text-center fw-bold" },
                     { "data": "PosPed", "className": "text-center" },
+                    { 
+                        "data": "Origen", 
+                        "className": "text-center",
+                        "render": function(data) {
+                            return data ? '<span class="badge bg-light text-dark border">' + data + '</span>' : '-';
+                        }
+                    },
+                    { 
+                        "data": "RespCtrPr", 
+                        "className": "text-center",
+                        "render": function(data) {
+                            return data ? '<code>' + data + '</code>' : '-';
+                        }
+                    },
                     { "data": "Producto", "className": "text-center fw-bold text-primary" },
                     { "data": "CtdPed", "className": "text-end fw-bold" },
                     { 
@@ -320,7 +364,6 @@
                         }
                     },
                     { 
-                        // Columna calculada: Valor Neto Unitario = Valor Neto Total / Cantidad
                         "data": null, 
                         "className": "text-end fw-semibold text-secondary",
                         "render": function(data, type, row) {
@@ -330,20 +373,10 @@
                             var netoTotal = parseFloat(strNeto);
                             var cantidad = parseFloat(strCant);
 
-                            // Validación para evitar división por cero o NaN
-                            if (isNaN(netoTotal) || isNaN(cantidad) || cantidad <= 0) {
-                                return '$ 0';
-                            }
-
-                            // Cálculo: Valor Neto Total / Cantidad
+                            if (isNaN(netoTotal) || isNaN(cantidad) || cantidad <= 0) return '$ 0';
                             var netoUnitario = Math.round(netoTotal / cantidad);
 
-                            // Para ordenamiento o exportación en Excel
-                            if (type === 'sort' || type === 'type') {
-                                return netoUnitario;
-                            }
-
-                            // Retorno visual en pesos chilenos
+                            if (type === 'sort' || type === 'type') return netoUnitario;
                             return '$ ' + netoUnitario.toLocaleString('es-CL');
                         }
                     },
@@ -353,18 +386,10 @@
                         "className": "text-center",
                         "render": function(data, type, row) {
                             if (!data) return '';
-
-                            // Si DataTables pide ordenar ('sort') o filtrar ('type'), convertimos "DD.MM.YYYY" -> "YYYYMMDD"
                             if (type === 'sort' || type === 'type') {
                                 var partes = String(data).trim().split('.');
-                                if (partes.length === 3) {
-                                    // Genera un formato ISO seguro para ordenamiento: "2026-08-24"
-                                    return partes[2] + '-' + partes[1] + '-' + partes[0];
-                                }
-                                return data;
+                                return partes.length === 3 ? partes[2] + '-' + partes[1] + '-' + partes[0] : data;
                             }
-
-                            // Para la vista normal del usuario ('display'), muestra la fecha tal como viene
                             return data;
                         }
                     },
@@ -379,24 +404,45 @@
                     }
                 ],
                 "language": {
-                    "url": "https://cdn.datatables.net/plug-ins/3.0.2/i18n/es-ES.json"
+                    "url": "https://cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json"
                 },
-                "pageLength": 15
+                "pageLength": 25
             });
 
-            // LISTENERS DE FILTRADO CON SELECT2
+            // LOGICA PARA EXPANDIR / COLAPSAR TODAS LAS SUBTABLAS BOM
+            $('#btnToggleAll').on('click', function() {
+                tabla.rows({ search: 'applied' }).every(function() {
+                    var tr = $(this.node());
+                    if (!estadoExpandido) {
+                        this.child(formatearDetalleBOM(this.data())).show();
+                        tr.addClass('shown');
+                        tr.find('td.details-control').html('<i class="bi bi-dash-circle-fill"></i>');
+                    } else {
+                        this.child.hide();
+                        tr.removeClass('shown');
+                        tr.find('td.details-control').html('<i class="bi bi-plus-circle-fill"></i>');
+                    }
+                });
+
+                estadoExpandido = !estadoExpandido;
+                if (estadoExpandido) {
+                    $('#btnToggleAll').html('<i class="bi bi-node-minus me-1"></i> Colapsar Todas las Estructuras BOM').removeClass('btn-outline-primary').addClass('btn-outline-danger');
+                } else {
+                    $('#btnToggleAll').html('<i class="bi bi-node-plus me-1"></i> Expandir Todas las Estructuras BOM').removeClass('btn-outline-danger').addClass('btn-outline-primary');
+                }
+            });
+
+            // LISTENERS DE FILTRADO
             $('#selectCliente').on('change', function() { tabla.column(1).search(this.value).draw(); });
             $('#selectPD').on('change', function() { tabla.column(2).search(this.value).draw(); });
-            $('#selectProducto').on('change', function() { tabla.column(4).search(this.value).draw(); });
-            $('#selectGrupo').on('change', function() { tabla.column(9).search(this.value).draw(); });
+            $('#selectProducto').on('change', function() { tabla.column(6).search(this.value).draw(); });
+            $('#selectGrupo').on('change', function() { tabla.column(12).search(this.value).draw(); });
 
-            // Botón Limpiar (resetea los Select2)
             $('#btnLimpiar').on('click', function() {
                 $('.select2-busqueda').val(null).trigger('change');
                 tabla.search('').columns().search('').draw();
             });
 
-            // Colapsable de detalles BOM
             $('#tablaPedidos tbody').on('click', 'td.details-control', function() {
                 var tr = $(this).closest('tr');
                 var row = tabla.row(tr);
@@ -411,47 +457,19 @@
                     $(this).html('<i class="bi bi-dash-circle-fill"></i>');
                 }
             });
-        });
 
-        function cargarUltimaEjecucion() {
-            $.get('api_ultima_ejecucion.php', function(res) {
-                if (res.status === 'success' && res.data) {
-                    var reg = res.data;
-                    
-                    // Construye un texto limpio con Fecha, Duración y Estado
-                    var estadoBadge = reg.estado === 'EXITOSO' 
-                        ? '<span class="badge bg-success ms-1">EXITOSO</span>' 
-                        : '<span class="badge bg-danger ms-1">ERROR</span>';
-
-                    var texto = reg.fecha_inicio + ' (' + reg.duracion + ')' + estadoBadge;
-
-                    $('#lblUltimaEjecucion').html(texto);
-                } else {
-                    $('#lblUltimaEjecucion').html('<span class="text-muted">Sin registros</span>');
-                }
-            });
-        }
-
-        $(document).ready(function() {
-            cargarUltimaEjecucion();
-        });
-
-        // Guardar cambios del Modal en MySQL
             $('#formFechasSAP').on('submit', function(e) {
                 e.preventDefault();
-
                 var fd = $('#inputFechaDesde').val();
                 var fh = $('#inputFechaHasta').val();
 
                 $('#btnGuardarFechas').prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Guardando...');
 
                 $.post('api_parametros.php', { fecha_desde: fd, fecha_hasta: fh }, function(res) {
-                    $('#btnGuardarFechas').prop('disabled', false).html('<i class="bi bi-save"></i> Guardar en BD');
+                    $('#btnGuardarFechas').prop('disabled', false).html('<i class="bi bi-save me-1"></i> Guardar en BD');
 
                     if (res.status === 'success') {
                         $('#alertModal').removeClass('d-none alert-danger').addClass('alert-success').text(res.message);
-                        
-                        // Actualizar vista principal
                         $('#lblRangoActivo').text(res.fecha_desde_sap + ' al ' + res.fecha_hasta_sap);
 
                         setTimeout(function() {
@@ -463,6 +481,7 @@
                     }
                 });
             });
+        });
     </script>
 </body>
 </html>

@@ -14,11 +14,12 @@ try {
 
     // 1. Obtener Cabeceras de Pedidos
     $sqlCabeceras = "
-        SELECT DISTINCT 
+      SELECT DISTINCT 
             COALESCE(Nombre, '') AS Cliente,
             Pedido,
-            `Pos.`,
-            `RespCtrPr.`,
+           `Pos._PD` AS PosPed,
+           `RespCtrPr.` AS RespCtrPr,
+           Origen,
             Material AS Producto,
             `Ctd.ped.` AS CtdPed,
             `Valor neto` AS ValorNeto,
@@ -32,8 +33,9 @@ try {
         SELECT DISTINCT 
             COALESCE(Nombre, '') AS Cliente,
             Pedido,
-            `Pos.`,
-            `RespCtrPr.`,
+            '' AS PosPed,
+            '' AS RespCtrPr,
+            '' as Origen,
             Material AS Producto,
             `Ctd.ped.` AS CtdPed,
             `Valor neto` AS ValorNeto,
@@ -42,7 +44,7 @@ try {
             'REVISIÓN MATERIAL 37' AS Estado
         FROM pedidos_revision_37
 
-        ORDER BY CAST(Pedido AS UNSIGNED) ASC, CAST(PosPed AS UNSIGNED) ASC
+        ORDER BY CAST(Pedido AS UNSIGNED) ASC, CAST(PosPed AS UNSIGNED) ASC;
     ";
 
     $stmt = $pdo->query($sqlCabeceras);
@@ -52,16 +54,17 @@ try {
     $sqlBOM = "
         SELECT DISTINCT 
             Pedido,
-            PosPed,
+            `Pos._PD` AS PosPed,
             Material AS Producto,
             `Nivel Explosión` AS NivelExplosion,
-            `Pos.` AS PosBOM,
+            `Pos._BOM` AS PosBOM,
             `N° Componentes` AS Componente,
             `Desc. Componente` AS DescComponente,
             Cantidad AS CantidadBOM,
             UMB,
             Cantidad_Total_Requerida AS CantidadTotal
         FROM vista_productiva_bom
+        WHERE `N° Componentes` NOT LIKE '37%'
         ORDER BY CAST(NULLIF(`Nivel Explosión`, '') AS UNSIGNED) ASC
     ";
 

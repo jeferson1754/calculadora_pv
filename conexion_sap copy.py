@@ -43,13 +43,12 @@ salida_excel_operativo = base_dir / "VISTA_OPERATIVA_PEDIDOS_BOM.xlsx"
 columnas_requeridas = [
     "Nombre",
     "Pedido",
-    "Pos.",
+    "PosPed",
     "Valor neto",
     "Mon.",
     "Ctd.ped.",
     "Material",
     "Fecha Probable",
-    "Origen",   
 ]
 
 # --- CONFIGURACIÓN DE CONEXIÓN MYSQL (XAMPP) ---
@@ -58,7 +57,7 @@ USER_DB = "root"
 PASSWORD_DB = ""  # Por defecto en XAMPP la clave viene vacía
 HOST_DB = "localhost"
 PORT_DB = "3306"
-NOMBRE_DB = "calculadora_pv"
+NOMBRE_DB = "calculadora_pv_2"
 CANTIDAD_CODIGOS = 50
 
 
@@ -358,7 +357,6 @@ def procesar_excel_productivo_1(columnas_requeridas=columnas_requeridas, archivo
     if "Doc.venta" in df.columns and "Pedido" not in df.columns:
         df.rename(columns={"Doc.venta": "Pedido"}, inplace=True)
     # Limpiar nombres de columnas
-    
     df.columns = df.columns.str.strip()
 
     # Aplicar limpieza a todas las columnas
@@ -441,9 +439,6 @@ def filtrar_columnas_bom():
         "Pos.": "Pos.",
         "N° Componentes": "N° Componentes",
         "Desc. Componente": "Desc. Componente",
-        "Origen": [c for c in df_bom.columns if "Origen" in c][0]
-        if any("Origen" in c for c in df_bom.columns)
-        else "Origen",
         "Cantidad": [c for c in df_bom.columns if "Cantidad" in c][0]
         if any("Cantidad" in c for c in df_bom.columns)
         else "Cantidad",
@@ -615,36 +610,28 @@ def vincular_bases(archivo_productiva=salida_productiva, archivo_bom=salida_bom)
     for col in df_bom.columns:
         df_bom[col] = df_bom[col].fillna("").astype(str).str.strip()
 
-    # Depurar duplicados en BASE_PRODUCTIVA
-    subset_prod = [c for c in ["Pedido", "PosPed", "Material"] if c in df_prod.columns]
-    if subset_prod:
-        df_prod.drop_duplicates(subset=subset_prod, keep="first", inplace=True)
+    df_prod.drop_duplicates(
+        subset=["Pedido", "PosPed", "Material"], keep="first", inplace=True
+    )
 
-    # Depurar duplicados en BASE_BOM (BÚSQUEDA SEGURA DE COLUMNAS EXISTENTES)
-    columnas_posibles_bom = ["Material", "N° Componentes", "Componente", "Nivel Explosión", "Pos.", "PosBOM"]
-    subset_bom = [c for c in columnas_posibles_bom if c in df_bom.columns]
-    
-    if subset_bom:
-        df_bom.drop_duplicates(subset=subset_bom, keep="first", inplace=True)
+    # Eliminar duplicados en BASE_BOM por Producto Padre + Componente + Nivel + Posición BOM
+    subset_bom = [
+        c
+        for c in ["Material", "N° Componentes", "Componente", "Nivel Explosión", "Pos."]
+        if c in df_bom.columns
+    ]
+    df_bom.drop_duplicates(subset=subset_bom, keep="first", inplace=True)
 
-    # 2. Conversión a formato numérico
-    col_cant_ped = "Ctd.ped." if "Ctd.ped." in df_prod.columns else "CtdPed"
-    df_prod["Ctd_Ped_Num"] = df_prod[col_cant_ped].apply(a_numero) if col_cant_ped in df_prod.columns else 1.0
-
-    col_cant_bom = "Cantidad" if "Cantidad" in df_bom.columns else "CantidadBOM"
-    df_bom["Cantidad_BOM_Num"] = df_bom[col_cant_bom].apply(a_numero) if col_cant_bom in df_bom.columns else 1.0
+    # 2. Conversión a formato numérico para poder multiplicar
+    df_prod["Ctd_Ped_Num"] = df_prod["Ctd.ped."].apply(a_numero)
+    df_bom["Cantidad_BOM_Num"] = df_bom["Cantidad"].apply(a_numero)
 
     # 3. Cruce/Merge por el Código SAP de Material
+    # BASE_PRODUCTIVA (Material) <---> BASE_BOM (Material)
     print("Realizando el cruce entre BASE_PRODUCTIVA y BASE_BOM...")
     df_cruce = pd.merge(
         df_prod, df_bom, on="Material", how="inner", suffixes=("_PD", "_BOM")
     )
-
-        # 4. Restauración de la columna 'Origen' (Convenio de Precio)
-    if "Origen_PD" in df_cruce.columns:
-        df_cruce["Origen"] = df_cruce["Origen_PD"]
-    elif "ConvenioPrecio_PD" in df_cruce.columns:
-        df_cruce["Origen"] = df_cruce["ConvenioPrecio_PD"]
 
     # 4. Cálculo: Cantidad Total Requerida del Componente por Pedido
     # Cantidad Total = (Cantidad Pedida del Producto) * (Cantidad Unitaria del Componente en BOM)
@@ -652,18 +639,22 @@ def vincular_bases(archivo_productiva=salida_productiva, archivo_bom=salida_bom)
         df_cruce["Ctd_Ped_Num"] * df_cruce["Cantidad_BOM_Num"]
     ).round(4)
 
-    df_cruce.drop(columns=["Ctd_Ped_Num", "Cantidad_BOM_Num"], inplace=True, errors="ignore")
+    # 5. Eliminar columnas auxiliares numéricas
+    df_cruce.drop(columns=["Ctd_Ped_Num", "Cantidad_BOM_Num"], inplace=True)
 
-    # 6. Depuración final segura
-    subset_final = [c for c in ["Pedido", "PosPed", "Material", "N° Componentes", "Nivel Explosión", "Origen"] if c in df_cruce.columns]
-    if subset_final:
-        df_cruce.drop_duplicates(subset=subset_final, keep="first", inplace=True)
+    # DEPURACIÓN FINAL EN LA BASE VINCULADA
+    subset_final = ["Pedido", "PosPed", "Material", "N° Componentes", "Nivel Explosión"]
+    subset_existentes = [c for c in subset_final if c in df_cruce.columns]
+    df_cruce.drop_duplicates(subset=subset_existentes, keep="first", inplace=True)
 
     # Guardar
     df_cruce.to_excel(archivo_salida, index=False)
-    
+    print(f"¡Éxito! Archivo guardado con {len(df_cruce)} filas únicas en:\n{archivo_salida}")
+
     print("\n==================================================")
-    print(f"¡ÉXITO! Vinculación completada. Se generaron {len(df_cruce)} filas cruzadas.")
+    print(
+        f"¡ÉXITO! Vinculación completada. Se generaron {len(df_cruce)} filas cruzadas."
+    )
     print(f"Archivo resultante guardado en: {archivo_salida}")
     print("==================================================")
 
