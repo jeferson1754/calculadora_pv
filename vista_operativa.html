@@ -342,7 +342,12 @@
                         "data": "Origen", 
                         "className": "text-center",
                         "render": function(data) {
-                            return data ? '<span class="badge bg-light text-dark border">' + data + '</span>' : '-';
+                            // Si data tiene valor y no es solo espacios vacíos, muestra el valor original
+                            if (data && String(data).trim() !== "") {
+                                return '<span class="badge bg-light text-dark border">' + data + '</span>';
+                            }
+                            // Si está vacío, nulo o indefinido, muestra "Spot"
+                            return '<span class="badge bg-light text-dark border">Spot</span>';
                         }
                     },
                     { 

@@ -50,7 +50,7 @@ try {
     $stmt = $pdo->query($sqlCabeceras);
     $cabeceras = $stmt->fetchAll();
 
-    // 2. Obtener Componentes BOM
+ // 2. Obtener Componentes BOM filtrando desde la tabla MySQL
     $sqlBOM = "
         SELECT DISTINCT 
             Pedido,
@@ -64,10 +64,12 @@ try {
             UMB,
             Cantidad_Total_Requerida AS CantidadTotal
         FROM vista_productiva_bom
-        WHERE `N° Componentes` NOT LIKE '37%'
+        WHERE `N° Componentes` IN (
+            SELECT codigo_material 
+            FROM maestro_codigos_32_33
+        )
         ORDER BY CAST(NULLIF(`Nivel Explosión`, '') AS UNSIGNED) ASC
     ";
-
     $stmtBOM = $pdo->query($sqlBOM);
     $componentesRaw = $stmtBOM->fetchAll();
 
