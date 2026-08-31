@@ -231,21 +231,37 @@
             });
         }
 
-        function cargarUltimaEjecucion() {
+     function cargarUltimaEjecucion() {
             $.get('api_ultima_ejecucion.php', function(res) {
                 if (res.status === 'success' && res.data) {
                     var reg = res.data;
-                    var estadoBadge = reg.estado === 'EXITOSO' 
-                        ? '<span class="badge bg-success ms-1">EXITOSO</span>' 
-                        : '<span class="badge bg-danger ms-1">ERROR</span>';
+              // Función auxiliar para convertir "10:20:40" a "10:20 am" o "22:20:40" a "10:20 pm"
+            function formatearHora12(fechaStr) {
+                if (!fechaStr) return '';
+                return fechaStr.replace(/\b(\d{1,2}):(\d{2}):\d{2}\b/g, function(match, hh, mm) {
+                    var h = parseInt(hh, 10);
+                    if (h === 0) h = 12; // Formato 12 para las 00:00 o 12:00
+                    var hStr = h < 10 ? '0' + h : h; // Mantiene 2 dígitos en la hora
+                    return hStr + ':' + mm;
+                });
+            }
 
-                    var texto = reg.fecha_inicio + ' (' + reg.duracion + ')' + estadoBadge;
-                    $('#lblUltimaEjecucion').html(texto);
+            // Lógica de visualización en la interfaz
+            var estadoBadge = reg.estado === 'EXITOSO' 
+                ? '<span class="badge bg-success ms-1">EXITOSO</span>' 
+                : '<span class="badge bg-danger ms-1">ERROR</span>';
+
+            // Aplicamos la conversión a reg.fecha_inicio
+            var fechaFormateada = formatearHora12(reg.fecha_inicio);
+
+            var texto = fechaFormateada + ' (' + reg.duracion + ')' + estadoBadge;
+            $('#lblUltimaEjecucion').html(texto);
                 } else {
                     $('#lblUltimaEjecucion').html('<span class="text-muted">Sin registros</span>');
                 }
             });
         }
+
 
         function formatearDetalleBOM(row) {
             var componentes = row.componentes;
