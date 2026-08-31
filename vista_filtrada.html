@@ -30,7 +30,7 @@
 </head>
 <body class="p-4">
 
-<!-- Encabezado con Menú de Navegación Integrado -->
+    <!-- Encabezado con Menú de Navegación Integrado -->
     <div class="card border-0 shadow-sm mb-4">
         <div class="card-body header-bg rounded-3 p-3">
             
@@ -40,10 +40,10 @@
                     <h4 class="m-0 fw-bold text-white me-3"><i class="bi bi-cpu-fill text-info me-2"></i>Sistema Calculadora PV</h4>
                     
                     <!-- BOTONES DE NAVEGACIÓN ENTRE VISTAS -->
-                    <a href="vista_operativa.html" class="btn btn-sm btn-light fw-semibold text-primary shadow-sm">
+                    <a href="vista_operativa.html" class="btn btn-sm btn-outline-light fw-semibold">
                         <i class="bi bi-diagram-3-fill me-1"></i> Vista Operativa BOM
                     </a>
-                    <a href="vista_filtrada.html" class="btn btn-sm btn-outline-light fw-semibold">
+                    <a href="vista_filtrada.html" class="btn btn-sm btn-light fw-semibold text-primary shadow-sm">
                         <i class="bi bi-filter-square me-1"></i> Vista Filtrada 
                     </a>
                 </div>
@@ -72,7 +72,6 @@
             </div>
         </div>
     </div>
-
     <!-- MODAL DE CONFIGURACIÓN DE FECHAS SAP -->
     <div class="modal fade" id="modalFechasSAP" tabindex="-1" aria-labelledby="modalFechasLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
@@ -259,7 +258,6 @@
                        '<table class="table table-sm table-striped table-bordered bg-white mb-0">' +
                        '<thead class="table-secondary text-center">' +
                        '<tr>' +
-                       '<th>Nivel</th>' +
                        '<th>Cód. Componente</th>' +
                        '<th>Descripción Componente</th>' +
                        '<th>Cant. Unitaria</th>' +
@@ -279,7 +277,6 @@
                 var cantTotal = parseFloat(String(c.CantidadTotal).replace(',', '.')).toLocaleString('es-CL', {minimumFractionDigits: 2});
 
                 html += '<tr>' +
-                        '<td>' + sangria + conector + '<span class="badge ' + badgeColor + '">Nivel ' + nivel + '</span></td>' +
                         '<td class="fw-bold text-center"><code>' + c.Componente + '</code></td>' +
                         '<td>' + c.DescComponente + '</td>' +
                         '<td class="text-end">' + cantUnit + '</td>' +
@@ -314,7 +311,7 @@
                     }
                 ],
                 "ajax": {
-                    "url": "api_vista_operativa.php",
+                    "url": "api_vista_operativa.php?tipo=solo_37",
                     "dataSrc": function(json) {
                         var clientes = new Set();
                         var pds = new Set();

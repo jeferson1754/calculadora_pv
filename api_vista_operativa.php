@@ -12,6 +12,9 @@ try {
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
     ]);
 
+    // Detectar si la petición solicita únicamente la vista de Códigos 37
+    $tipoConsulta = isset($_GET['tipo']) ? trim($_GET['tipo']) : 'completo';
+
     // 1. Obtener Cabeceras de Pedidos
     $sqlCabeceras = "
       SELECT DISTINCT 
@@ -51,25 +54,44 @@ try {
     $cabeceras = $stmt->fetchAll();
 
  // 2. Obtener Componentes BOM filtrando desde la tabla MySQL
-    $sqlBOM = "
-        SELECT DISTINCT 
-            Pedido,
-            `Pos._PD` AS PosPed,
-            Material AS Producto,
-            `Nivel Explosión` AS NivelExplosion,
-            `Pos._BOM` AS PosBOM,
-            `N° Componentes` AS Componente,
-            `Desc. Componente` AS DescComponente,
-            Cantidad AS CantidadBOM,
-            UMB,
-            Cantidad_Total_Requerida AS CantidadTotal
-        FROM vista_productiva_bom
-        WHERE `N° Componentes` IN (
-            SELECT codigo_material 
-            FROM maestro_codigos_32_33
-        )
-        ORDER BY CAST(NULLIF(`Nivel Explosión`, '') AS UNSIGNED) ASC
-    ";
+
+
+    if ($tipoConsulta === 'solo_37') {
+        $sqlBOM = "
+            SELECT DISTINCT 
+                Pedido,
+                `Pos._PD` AS PosPed,
+                Material AS Producto,
+                `Nivel Explosión` AS NivelExplosion,
+                `Pos._BOM` AS PosBOM,
+                `N° Componentes` AS Componente,
+                `Desc. Componente` AS DescComponente,
+                Cantidad AS CantidadBOM,
+                UMB,
+                Cantidad_Total_Requerida AS CantidadTotal
+            FROM vista_productiva_bom
+            WHERE `N° Componentes` IN (
+                SELECT codigo_material 
+                FROM maestro_codigos_32_33
+            )
+        ";
+    }else{
+        $sqlBOM = "
+            SELECT DISTINCT 
+                Pedido,
+                `Pos._PD` AS PosPed,
+                Material AS Producto,
+                `Nivel Explosión` AS NivelExplosion,
+                `Pos._BOM` AS PosBOM,
+                `N° Componentes` AS Componente,
+                `Desc. Componente` AS DescComponente,
+                Cantidad AS CantidadBOM,
+                UMB,
+                Cantidad_Total_Requerida AS CantidadTotal
+            FROM vista_productiva_bom
+        ";
+    }
+
     $stmtBOM = $pdo->query($sqlBOM);
     $componentesRaw = $stmtBOM->fetchAll();
 

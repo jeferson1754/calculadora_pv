@@ -359,12 +359,25 @@ def procesar_excel_productivo_1(columnas_requeridas=columnas_requeridas, archivo
         df.rename(columns={"Doc.venta": "Pedido"}, inplace=True)
     # Limpiar nombres de columnas
     
-    df.columns = df.columns.str.strip()
+# Limpiar espacios de los encabezados
+    df.columns = df.columns.astype(str).str.strip()
 
-    # Aplicar limpieza a todas las columnas
-    for col in df.columns:
-        df[col] = df[col].apply(limpiar_texto)
+    # Mapear nombres alternativos de la columna 'Valor neto'
+    renombres_valor_neto = {
+        "ValorNeto": "Valor neto",
+        "Valor Neto": "Valor neto",
+        "Valor neto CLP": "Valor neto",
+        "V. Ent CLP": "Valor neto",
+    }
+    df.rename(columns=renombres_valor_neto, inplace=True)
 
+    # Asegurar que todas las 'columnas_requeridas' existan en el DataFrame
+    for col in columnas_requeridas:
+        if col not in df.columns:
+            # Si no existe, la crea con valores vacíos para prevenir el KeyError
+            df[col] = ""
+
+    # Ahora es seguro hacer la copia sin riesgo de KeyError
     df_trabajo = df[columnas_requeridas].copy()
 
     # Guardar BASE_TRABAJO (Aquí SÍ se repiten los materiales porque son múltiples pedidos)
