@@ -15,48 +15,31 @@ try {
     // Detectar si la petición solicita únicamente la vista de Códigos 37
     $tipoConsulta = isset($_GET['tipo']) ? trim($_GET['tipo']) : 'completo';
 
-    // 1. Obtener Cabeceras de Pedidos
-    $sqlCabeceras = "
-      SELECT DISTINCT 
-            COALESCE(Nombre, '') AS Cliente,
-            Pedido,
-           `Pos._PD` AS PosPed,
-           `RespCtrPr.` AS RespCtrPr,
-           Origen,
-            Material AS Producto,
-            `Ctd.ped.` AS CtdPed,
-            `Valor neto` AS ValorNeto,
-            `Mon.` AS Moneda,
-            `Fecha Probable` AS FechaProbable,
-            COALESCE(Estado, 'PRODUCTIVO') AS Estado
-        FROM vista_productiva_bom
-
-        UNION ALL
-
-        SELECT DISTINCT 
-            COALESCE(Nombre, '') AS Cliente,
-            Pedido,
-            '' AS PosPed,
-            '' AS RespCtrPr,
-            '' as Origen,
-            Material AS Producto,
-            `Ctd.ped.` AS CtdPed,
-            `Valor neto` AS ValorNeto,
-            `Mon.` AS Moneda,
-            `Fecha Probable` AS FechaProbable,
-            'REVISIÓN MATERIAL 37' AS Estado
-        FROM pedidos_revision_37
-
-        ORDER BY CAST(Pedido AS UNSIGNED) ASC, CAST(PosPed AS UNSIGNED) ASC;
-    ";
-
-    $stmt = $pdo->query($sqlCabeceras);
-    $cabeceras = $stmt->fetchAll();
-
- // 2. Obtener Componentes BOM filtrando desde la tabla MySQL
-
-
     if ($tipoConsulta === 'solo_37') {
+        // 1. Obtener Cabeceras de Pedidos
+        $sqlCabeceras = "
+        SELECT DISTINCT 
+                COALESCE(Nombre, '') AS Cliente,
+                Pedido,
+            `Pos._PD` AS PosPed,
+            `RespCtrPr.` AS RespCtrPr,
+            Origen,
+                Material AS Producto,
+                `Ctd.ped.` AS CtdPed,
+                `Valor neto` AS ValorNeto,
+                `Mon.` AS Moneda,
+                `Fecha Probable` AS FechaProbable,
+                COALESCE(Estado, 'PRODUCTIVO') AS Estado
+            FROM vista_productiva_bom
+
+            ORDER BY CAST(Pedido AS UNSIGNED) ASC, CAST(PosPed AS UNSIGNED) ASC;
+        ";
+
+        $stmt = $pdo->query($sqlCabeceras);
+        $cabeceras = $stmt->fetchAll();
+
+        // 2. Obtener Componentes BOM filtrando desde la tabla MySQL
+
         $sqlBOM = "
             SELECT DISTINCT 
                 Pedido,
@@ -76,6 +59,44 @@ try {
             )
         ";
     }else{
+
+      $sqlCabeceras = "
+        SELECT DISTINCT 
+                COALESCE(Nombre, '') AS Cliente,
+                Pedido,
+            `Pos._PD` AS PosPed,
+            `RespCtrPr.` AS RespCtrPr,
+            Origen,
+                Material AS Producto,
+                `Ctd.ped.` AS CtdPed,
+                `Valor neto` AS ValorNeto,
+                `Mon.` AS Moneda,
+                `Fecha Probable` AS FechaProbable,
+                COALESCE(Estado, 'PRODUCTIVO') AS Estado
+            FROM vista_productiva_bom
+
+            UNION ALL
+
+            SELECT DISTINCT 
+                COALESCE(Nombre, '') AS Cliente,
+                Pedido,
+                '' AS PosPed,
+                '' AS RespCtrPr,
+                '' as Origen,
+                Material AS Producto,
+                `Ctd.ped.` AS CtdPed,
+                `Valor neto` AS ValorNeto,
+                `Mon.` AS Moneda,
+                `Fecha Probable` AS FechaProbable,
+                'REVISIÓN MATERIAL 37' AS Estado
+            FROM pedidos_revision_37
+
+            ORDER BY CAST(Pedido AS UNSIGNED) ASC, CAST(PosPed AS UNSIGNED) ASC;
+        ";
+
+        $stmt = $pdo->query($sqlCabeceras);
+        $cabeceras = $stmt->fetchAll();
+
         $sqlBOM = "
             SELECT DISTINCT 
                 Pedido,

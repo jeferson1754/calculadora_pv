@@ -11,6 +11,9 @@
     <link href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.bootstrap5.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     
+    <!-- CSS de ColReorder (Agregar en el <head>) -->
+    <link href="https://cdn.datatables.net/colreorder/1.7.0/css/colReorder.bootstrap5.min.css" rel="stylesheet">
+
     <!-- SELECT2 CSS + TEMA BOOTSTRAP 5 -->
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
@@ -25,6 +28,33 @@
         .select2-container--bootstrap-5 .select2-selection {
             font-size: 0.875rem;
             min-height: 31px;
+        }
+
+        /* Cambia el cursor al pasar sobre los encabezados para indicar que se pueden arrastrar */
+        table.dataTable thead th {
+            cursor: move;
+        }
+        /* Mantiene el cursor por defecto en la primera columna si está fija */
+        table.dataTable thead th.details-control {
+            cursor: pointer;
+        }
+
+        /* Ocultar el clon gigante oscuro que se genera al arrastrar */
+        .dt-cr-clonedTable,
+        table.dt-cr-clonedTable,
+        div.dt-cr-clonedTarget,
+        .dt-cr-clonedTarget {
+            display: none !important;
+            opacity: 0 !important;
+            visibility: hidden !important;
+        }
+
+        /* Dejar visible únicamente la línea azul que indica el destino */
+        div.dt-cr-insert {
+            display: block !important;
+            background-color: #0d6efd !important;
+            width: 4px !important;
+            z-index: 99999 !important;
         }
     </style>
 </head>
@@ -143,7 +173,6 @@
                     <select id="selectGrupo" class="form-select form-select-sm select2-busqueda">
                         <option value="">-- Todos los Grupos --</option>
                         <option value="PRODUCTIVO">PRODUCTIVO (BOM Completa)</option>
-                        <option value="REVISIÓN 37">REVISIÓN MATERIAL 37</option>
                     </select>
                 </div>
             </div>
@@ -207,6 +236,9 @@
     
     <!-- SELECT2 JS -->
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    
+        <!-- JS de ColReorder (Agregar al final junto a los demás scripts) -->
+    <script src="https://cdn.datatables.net/colreorder/1.7.0/js/dataTables.colReorder.min.js"></script>
 
     <script>
         var estadoExpandido = false;
@@ -316,6 +348,11 @@
             });
 
             var tabla = $('#tablaPedidos').DataTable({
+                      // 1. Habilitar la extensión de reordenamiento interactivo
+               colReorder: {
+                    fixedColumnsLeft: 1,
+                    realtime: false // Desactiva el clon flotante y muestra únicamente la guía de destino
+                },
                 "dom": '<"d-flex justify-content-between align-items-center mb-3"Bf>rt<"d-flex justify-content-between align-items-center mt-3"lip>',
                 "buttons": [
                     {
