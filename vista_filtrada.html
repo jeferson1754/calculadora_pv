@@ -203,17 +203,17 @@
                         <tr>
                             <th style="width: 40px;"></th>
                             <th>Cliente</th>
-                            <th>PD (Pedido)</th>
+                            <th>PD</th>
                             <th>Pos.</th>
-                            <th>Convenio Precio</th>
-                            <th>Resp. CtrProd.</th>
-                            <th>Producto SAP</th>
-                            <th>Ctd. Pedido</th>
-                            <th>Valor Neto Total</th>
+                            <th>Convenio </th>
+                            <th>RespCtrPr.</th>
+                            <th>Codigo SAP</th>
+                            <th>Valor Total</th>
+                            <th>Ctd.</th>
                             <th>Neto Unitario</th>
                             <th>Moneda</th>
                             <th>Fecha Probable</th>
-                            <th>Grupo / Estado</th>
+                            <th>Estado</th>
                         </tr>
                     </thead>
                     <tbody></tbody>
@@ -301,7 +301,7 @@
             }
 
             var html = '<div class="p-3 subtable rounded-3 border">' +
-                       '<h6 class="fw-bold text-primary mb-2"><i class="bi bi-diagram-3 me-1"></i> Desglose de Materiales Internos (Producto: ' + row.Producto + ')</h6>' +
+                       '<h6 class="fw-bold text-primary mb-2"><i class="bi bi-diagram-3 me-1"></i> Desglose de Materiales Internos: ' + row.texto_breve + ' </h6>' +
                        '<table class="table table-sm table-striped table-bordered bg-white mb-0">' +
                        '<thead class="table-secondary text-center">' +
                        '<tr>' +
@@ -420,7 +420,7 @@
                         }
                     },
                     { "data": "Producto", "className": "text-center fw-bold text-primary" },
-                    { "data": "CtdPed", "className": "text-end fw-bold" },
+                    
                     { 
                         "data": "ValorNeto", 
                         "className": "text-end",
@@ -430,6 +430,7 @@
                             return isNaN(num) ? '$ 0' : '$ ' + Math.round(num).toLocaleString('es-CL');
                         }
                     },
+                    { "data": "CtdPed", "className": "text-end fw-bold" },
                     { 
                         "data": null, 
                         "className": "text-end fw-semibold text-secondary",

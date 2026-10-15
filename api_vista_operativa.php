@@ -21,8 +21,9 @@ try {
         SELECT DISTINCT 
                 COALESCE(Nombre, '') AS Cliente,
                 Pedido,
+                    `Texto breve de material` as texto_breve,
             `Pos._PD` AS PosPed,
-            `RespCtrPr.` AS RespCtrPr,
+            `RCtrP` AS RespCtrPr,
             Origen,
                 Material AS Producto,
                 `Ctd.ped.` AS CtdPed,
@@ -61,11 +62,12 @@ try {
     }else{
 
       $sqlCabeceras = "
-        SELECT DISTINCT 
+       SELECT DISTINCT 
                 COALESCE(Nombre, '') AS Cliente,
                 Pedido,
+                    `Texto breve de material` as texto_breve,
             `Pos._PD` AS PosPed,
-            `RespCtrPr.` AS RespCtrPr,
+            `RCtrP` AS RespCtrPr,
             Origen,
                 Material AS Producto,
                 `Ctd.ped.` AS CtdPed,
@@ -80,6 +82,7 @@ try {
             SELECT DISTINCT 
                 COALESCE(Nombre, '') AS Cliente,
                 Pedido,
+                '' as texto_breve,
                 '' AS PosPed,
                 '' AS RespCtrPr,
                 '' as Origen,
