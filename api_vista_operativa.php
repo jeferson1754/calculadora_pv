@@ -55,8 +55,22 @@ try {
                 Cantidad_Total_Requerida AS CantidadTotal
             FROM vista_productiva_bom
             WHERE `N° Componentes` IN (
-                SELECT codigo_material 
+                SELECT codigo_material COLLATE utf8mb4_general_ci 
                 FROM maestro_codigos_32_33
+            )
+            -- REGLA 32 vs 33 EXCLUSIVA PARA TUBERÍAS ('TU AC '):
+            -- Si existe un código 32 de tubería ('TU AC %'), se excluye el código 33 de tubería ('TU AC %') en la misma posición del pedido
+            AND NOT (
+                `N° Componentes` LIKE '33%' 
+                AND `Desc. Componente` LIKE 'TU AC %'
+                AND EXISTS (
+                    SELECT 1 
+                    FROM vista_productiva_bom padre
+                    WHERE padre.Pedido = vista_productiva_bom.Pedido
+                    AND padre.`Pos._PD` = vista_productiva_bom.`Pos._PD`
+                    AND padre.`N° Componentes` LIKE '32%'
+                    AND padre.`Desc. Componente` LIKE 'TU AC %'
+                )
             )
         ";
     }else{
