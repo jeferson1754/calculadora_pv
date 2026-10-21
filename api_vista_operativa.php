@@ -30,9 +30,10 @@ try {
                 `Valor neto` AS ValorNeto,
                 `Mon.` AS Moneda,
                 `Fecha Probable` AS FechaProbable,
-                COALESCE(Estado, 'PRODUCTIVO') AS Estado
+                COALESCE(Estado, 'PRODUCTIVO') AS Estado,
+                Motivo_Rechazo
             FROM vista_productiva_bom
-
+            WHERE Estado != 'RECHAZADO'
             ORDER BY CAST(Pedido AS UNSIGNED) ASC, CAST(PosPed AS UNSIGNED) ASC;
         ";
 
@@ -88,7 +89,8 @@ try {
                 `Valor neto` AS ValorNeto,
                 `Mon.` AS Moneda,
                 `Fecha Probable` AS FechaProbable,
-                COALESCE(Estado, 'PRODUCTIVO') AS Estado
+                COALESCE(Estado, 'PRODUCTIVO') AS Estado,
+                Motivo_Rechazo
             FROM vista_productiva_bom
 
             UNION ALL
@@ -105,7 +107,8 @@ try {
                 `Valor neto` AS ValorNeto,
                 `Mon.` AS Moneda,
                 `Fecha Probable` AS FechaProbable,
-                'REVISIÓN MATERIAL 37' AS Estado
+                'REVISIÓN MATERIAL 37' AS Estado,
+                '' as Motivo_Rechazo
             FROM pedidos_revision_37
 
             ORDER BY CAST(Pedido AS UNSIGNED) ASC, CAST(PosPed AS UNSIGNED) ASC;

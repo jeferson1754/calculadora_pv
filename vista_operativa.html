@@ -175,6 +175,7 @@
                         <option value="">-- Todos los Grupos --</option>
                         <option value="PRODUCTIVO">PRODUCTIVO (BOM Completa)</option>
                         <option value="REVISIÓN 37">REVISIÓN MATERIAL 37</option>
+                        <option value="RECHAZADO">RECHAZADOS</option>
                     </select>
                 </div>
             </div>
@@ -468,10 +469,18 @@
                     { 
                         "data": "Estado", 
                         "className": "text-center",
-                        "render": function(data) {
-                            return data === 'PRODUCTIVO' 
-                                ? '<span class="badge bg-success">PRODUCTIVO</span>' 
-                                : '<span class="badge bg-warning text-dark">REVISIÓN 37</span>';
+                        "render": function(data, type, row) {
+                            if (data === 'PRODUCTIVO') {
+                                return '<span class="badge bg-success">PRODUCTIVO</span>';
+                            } else if (data === 'RECHAZADO') {
+                                // Extrae el motivo de rechazo o coloca un texto por defecto si viene nulo
+                                var motivo = row.Motivo_Rechazo ? row.Motivo_Rechazo : 'Sin motivo especificado';
+                                return '<span class="badge bg-danger" title="' + motivo + '" data-bs-toggle="tooltip">' +
+                                        'RECHAZADO <i class="bi bi-info-circle ms-1"></i>' +
+                                    '</span>';
+                            } else {
+                                return '<span class="badge bg-warning text-dark">REVISIÓN 37</span>';
+                            }
                         }
                     }
                 ],
