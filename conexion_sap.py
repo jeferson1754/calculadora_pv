@@ -16,6 +16,8 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 from auditoria import RegistrarEjecucion
 
+from procesar_bodega import procesar_bodega, obtener_almacenes_permitidos, procesar_excel_productivo_2, insertar_bodegas_productivas, guardar_en_mysql_bodegas
+
 
 ruta = r"C:\xampp\htdocs\Calculadora_PV\PV"
 

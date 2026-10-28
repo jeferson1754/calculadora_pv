@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>REVESOL - Necesidades Consolidadas de Materias Primas</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.bootstrap5.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+
+    <style>
+        body { background-color: #f8f9fa; font-family: 'Segoe UI', Tahoma, sans-serif; }
+        .header-bg { background-color: #1f497d; color: white; }
+        .card-filter { border-left: 4px solid #0d6efd; background-color: #ffffff; }
+        td.details-control { cursor: pointer; text-align: center; font-size: 1.2rem; color: #0d6efd; }
+        tr.shown td.details-control { color: #dc3545; }
+        .subtable { background-color: #f1f3f5; font-size: 0.85rem; }
+        th.col-bodega { background-color: #0d6efd !important; }
+        th.col-despunte { background-color: #6c757d !important; }
+        th.col-total { background-color: #198754 !important; color: white !important }
+        th.col-faltante { background-color: #dc3545 !important; }
+        td.col-despunte { background-color: #f3f4f6; color: #6c757d; }
+        .kpi { border-left: 4px solid #0d6efd; }
+        .kpi.danger { border-left-color: #dc3545; }
+        .kpi.success { border-left-color: #198754; }
+    </style>
+</head>
+<body class="p-4">
+
+    <!-- ENCABEZADO -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body header-bg rounded-3 p-3">
+            <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom border-light-subtle">
+                 <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <h4 class="m-0 fw-bold text-white me-3"><i class="bi bi-cpu-fill text-info me-2"></i>Sistema Calculadora PV</h4>
+                    <a href="vista_operativa.html" class="btn btn-sm btn-outline-light fw-semibold">
+                        <i class="bi bi-diagram-3-fill me-1"></i> Vista Operativa BOM
+                    </a>
+                    <a href="vista_filtrada.html" class="btn btn-sm btn-outline-light fw-semibold">
+                        <i class="bi bi-filter-square me-1"></i> Vista Filtrada
+                    </a>
+                    <a href="vista_bodegas.html" class="btn btn-sm btn-light fw-semibold text-primary shadow-sm">
+                        <i class="bi bi-box-seam-fill me-1"></i> Bodegas
+                    </a>
+                </div>
+               <div class="text-end">
+    <div class="d-inline-flex align-items-center gap-1.5 bg-white border rounded-pill px-3 py-1 shadow-sm small">
+        <i class="bi bi-clock-history text-primary"></i>
+        <span class="text-muted fw-semibold">Última ejecución:</span>
+        <span id="lblUltimaEjecucion" class="d-inline-flex align-items-center gap-1">
+            <span class="spinner-border spinner-border-sm text-primary" role="status"></span>
+        </span>
+    </div>
+</div>
+            </div>
+            <small class="text-white-50 d-block">
+                Suma acumulada de materias primas requeridas por todos los pedidos de venta pendientes, contrastada contra el stock libre (MB52) de bodegas conformes.
+            </small>
+        </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3"><div class="card kpi shadow-sm border-0"><div class="card-body py-2">
+            <small class="text-muted">Materiales analizados</small><div class="fs-4 fw-bold" id="kpiTotal">-</div></div></div></div>
+        <div class="col-md-3"><div class="card kpi danger shadow-sm border-0"><div class="card-body py-2">
+            <small class="text-muted">Con faltante (a comprar)</small><div class="fs-4 fw-bold text-danger" id="kpiFaltante">-</div></div></div></div>
+        <div class="col-md-3"><div class="card kpi success shadow-sm border-0"><div class="card-body py-2">
+            <small class="text-muted">Cubiertos por stock</small><div class="fs-4 fw-bold text-success" id="kpiCubierto">-</div></div></div></div>
+        <div class="col-md-3"><div class="card kpi shadow-sm border-0"><div class="card-body py-2">
+            <small class="text-muted">Posiciones excluidas (rechazadas / 37)</small><div class="fs-4 fw-bold" id="kpiExcluidas">-</div></div></div></div>
+    </div>
+
+    <!-- FILTROS -->
+    <div class="card card-filter shadow-sm mb-4">
+        <div class="card-body p-3">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold small">Buscar material (código o descripción):</label>
+                    <input type="text" id="inputBuscar" class="form-control form-control-sm" placeholder="Escriba para filtrar...">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold small">Familia de material:</label>
+                    <select id="selectFamilia" class="form-select form-select-sm">
+                        <option value="">Todas (33 y 32)</option>
+                        <option value="33">33 - Materia prima</option>
+                        <option value="32">32 - Acopio (planchas / tuberías)</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold small">Cobertura:</label>
+                    <select id="selectCobertura" class="form-select form-select-sm">
+                        <option value="">Todos</option>
+                        <option value="faltante">Solo con faltante (a comprar)</option>
+                        <option value="cubierto">Solo cubiertos por stock</option>
+                    </select>
+                </div>
+                <div class="col-md-2 text-end">
+                    <button id="btnLimpiar" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-arrow-counterclockwise me-1"></i> Limpiar
+                    </button>
+                </div>
+            </div>
+            <div class="small text-muted mt-3" id="lblReglas"></div>
+        </div>
+    </div>
+
+    <!-- TABLA -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-3">
+            <div id="loading" class="text-center p-4 text-muted">
+                <span class="spinner-border spinner-border-sm me-2"></span> Consolidando pedidos y stock MB52...
+            </div>
+            <div id="errorBox" class="alert alert-danger d-none"></div>
+            <div class="table-responsive">
+                <table id="tablaNecesidades" class="table table-hover table-bordered align-middle w-100 d-none">
+                    <thead class="table-dark text-center"><tr id="theadRow"></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.bootstrap5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+
+    <script>
+    /* =====================================================================
+       CONFIGURACIÓN DE REGLAS DE NEGOCIO (ajustar según definición SAP)
+       ===================================================================== */
+       var CONFIG = {
+        // Diccionario de materias primas: solo códigos que empiezan con estos prefijos
+        prefijosMateriaPrima: ['33', '32'],
+        // Códigos excluidos (servicios de pintura, cobros especiales, refacturaciones)
+        prefijosExcluidos: ['37'],
+ 
+        // MB52: almacenes con material conforme (una columna por bodega)
+        // (deben ser las mismas que en api_stock_mb52.php)
+        bodegasConformes: ['1001','1003','1014', '1027','1029','1030','1032'],
+        // MB52: bodega de despuntes / retazos (columna aislada, NO suma al stock libre)
+        bodegasDespuntes: ['1010'],
+        // MB52: almacenes excluidos (despacho, inactivos)
+        bodegasExcluidas: ['1018']
+    };
+
+    /* Conversión de unidades de medida (a unidad base común) */
+    var UNIDADES = {
+        'MM': { b: 'M',  f: 0.001 }, 'CM': { b: 'M',  f: 0.01 }, 'M':  { b: 'M',  f: 1 },
+        'MT': { b: 'M',  f: 1 },     'KM': { b: 'M',  f: 1000 },
+        'G':  { b: 'KG', f: 0.001 }, 'KG': { b: 'KG', f: 1 },    'TO': { b: 'KG', f: 1000 }
+    };
+
+    /* =====================================================================
+       UTILIDADES
+       ===================================================================== */
+    function parseNum(v) {
+        if (v === null || v === undefined || v === '') return 0;
+        var s = String(v).trim();
+        if (s.indexOf(',') > -1) s = s.replace(/\./g, '').replace(',', '.'); // 1.234,56
+        var n = parseFloat(s);
+        return isNaN(n) ? 0 : n;
+    }
+
+    function fmt(n, dec) {
+        return Number(n).toLocaleString('es-CL', { minimumFractionDigits: dec === undefined ? 2 : dec, maximumFractionDigits: dec === undefined ? 2 : dec });
+    }
+
+    function empiezaCon(codigo, prefijos) {
+        codigo = String(codigo || '').trim().replace(/^0+/, '');
+        return prefijos.some(function(p) { return codigo.indexOf(p) === 0; });
+    }
+
+    function esMateriaPrima(codigo) {
+        return empiezaCon(codigo, CONFIG.prefijosMateriaPrima) && !empiezaCon(codigo, CONFIG.prefijosExcluidos);
+    }
+
+    /* Convierte valor desde una UMB a otra. Devuelve {valor, ok} */
+    function convertir(valor, desde, hacia) {
+        var d = String(desde || '').toUpperCase().trim();
+        var h = String(hacia || '').toUpperCase().trim();
+        if (!d || !h || d === h) return { valor: valor, ok: true };
+        var ud = UNIDADES[d], uh = UNIDADES[h];
+        if (ud && uh && ud.b === uh.b) return { valor: valor * ud.f / uh.f, ok: true };
+        return { valor: valor, ok: false };
+    }
+
+    function norm(s) { return String(s === null || s === undefined ? '' : s).trim(); }
+
+    /* =====================================================================
+       ÚLTIMA EJECUCIÓN
+       ===================================================================== */
+   function cargarUltimaEjecucion() {
+    $.get('api_ultima_ejecucion.php', function(res) {
+        if (res.status === 'success' && res.data) {
+            var reg = res.data;
+
+            // Badge de estado minimalista
+            var badgeEstado = reg.estado === 'EXITOSO'
+                ? '<span class="badge bg-success-subtle text-success border border-success-subtle px-1.5 py-0.5 rounded">EXITOSO</span>'
+                : '<span class="badge bg-danger-subtle text-danger border border-danger-subtle px-1.5 py-0.5 rounded">ERROR</span>';
+
+            // Badge de variación y Tooltip enriquecido
+            var badgeComparacion = '';
+            if (reg.comparacion_semanal) {
+                var comp = reg.comparacion_semanal;
+                var colorClass = comp.es_mayor ? 'text-danger bg-danger-subtle border-danger-subtle' : 'text-success bg-success-subtle border-success-subtle';
+                var icono = comp.es_mayor ? '▲' : '▼';
+                
+                // Tooltip que combina promedio semanal + ejecución anterior
+                var accion = comp.es_mayor ? 'Demoró un ' : 'Fue un ';
+                var tooltipText = accion + comp.signo + ' respecto al promedio semanal. (Anterior: ' + reg.duracion_ayer + ')';
+
+                badgeComparacion = '<span class="badge ' + colorClass + ' border fw-semibold ms-1" title="' + tooltipText + '" style="cursor:help;">' +
+                                       icono + ' ' + comp.signo + ' vs sem.' +
+                                   '</span>';
+            }
+
+            var contenido = '<span class="fw-medium text-dark">' + reg.fecha_inicio + '</span> ' +
+                            '<span class="text-secondary fw-semibold">(' + reg.duracion_formateada + ')</span> ' +
+                            badgeEstado + ' ' +
+                            badgeComparacion;
+
+            $('#lblUltimaEjecucion').html(contenido);
+        } else {
+            $('#lblUltimaEjecucion').html('<span class="text-muted small">Sin registros</span>');
+        }
+    }).fail(function() {
+        $('#lblUltimaEjecucion').html('<span class="text-danger small">Error</span>');
+    });
+}
+
+    /* =====================================================================
+       CONSOLIDACIÓN
+       ===================================================================== */
+    function consolidar(pedidos, stockRows) {
+        var excluidas = 0;
+
+        /* --- 1. Stock MB52 por material, filtrando bodegas --- */
+        var stock = {};
+        (stockRows || []).forEach(function(r) {
+            var mat = norm(r.Material).replace(/^0+/, '');
+            var alm = norm(r.Almacen);
+            if (!mat) return;
+            if (CONFIG.bodegasExcluidas.indexOf(alm) > -1) return;
+
+            var esConforme = CONFIG.bodegasConformes.indexOf(alm) > -1;
+            var esDespunte = CONFIG.bodegasDespuntes.indexOf(alm) > -1;
+            if (!esConforme && !esDespunte) return; // bodega no autorizada
+
+            if (!stock[mat]) stock[mat] = { desc: norm(r.Descripcion), umb: norm(r.UMB), bod: {}, despunte: 0 };
+            if (!stock[mat].desc && r.Descripcion) stock[mat].desc = norm(r.Descripcion);
+            var libre = parseNum(r.StockLibre);
+            if (esConforme) stock[mat].bod[alm] = (stock[mat].bod[alm] || 0) + libre;
+            else stock[mat].despunte += libre;
+        });
+
+        /* --- 2. Necesidades acumuladas por componente --- */
+        var req = {};
+        (pedidos || []).forEach(function(p) {
+            var estado = norm(p.Estado).toUpperCase();
+            var rechazado = estado === 'RECHAZADO' || norm(p.Motivo_Rechazo) !== '';
+            var es37 = estado.indexOf('37') > -1 || empiezaCon(p.Producto, CONFIG.prefijosExcluidos);
+
+            if (rechazado || es37) { excluidas++; return; }
+
+            (p.componentes || []).forEach(function(c) {
+                var cod = norm(c.Componente).replace(/^0+/, '');
+                if (!esMateriaPrima(cod)) return;
+
+                if (!req[cod]) req[cod] = { desc: norm(c.DescComponente), umbOrig: norm(c.UMB), items: [] };
+                req[cod].items.push({
+                    pedido: p.Pedido, pos: p.PosPed, cliente: p.Cliente,
+                    cant: parseNum(c.CantidadTotal), umb: norm(c.UMB)
+                });
+            });
+        });
+
+        /* --- 3. Unir requerimiento + stock con UMB homogénea --- */
+        var codigos = {};
+        Object.keys(req).forEach(function(k) { codigos[k] = 1; });
+
+        var filas = [];
+        Object.keys(codigos).forEach(function(cod) {
+            var r = req[cod];
+            var s = stock[cod];
+            var umbDestino = (s && s.umb) ? s.umb : r.umbOrig;
+            var advertencia = false;
+
+            var reqTotal = 0;
+            var detalle = r.items.map(function(it) {
+                var cv = convertir(it.cant, it.umb, umbDestino);
+                if (!cv.ok) advertencia = true;
+                reqTotal += cv.valor;
+                return { pedido: it.pedido, pos: it.pos, cliente: it.cliente, cant: cv.valor };
+            });
+
+            var bod = {};
+            var libreTotal = 0;
+            CONFIG.bodegasConformes.forEach(function(b) {
+                bod[b] = s ? (s.bod[b] || 0) : 0;
+                libreTotal += bod[b];
+            });
+
+            filas.push({
+                codigo: cod,
+                desc: r.desc || (s ? s.desc : ''),
+                umb: umbDestino,
+                bod: bod,
+                despunte: s ? s.despunte : 0,
+                libreTotal: libreTotal,
+                reqTotal: reqTotal,
+                faltante: reqTotal - libreTotal,
+                detalle: detalle,
+                advertencia: advertencia,
+                familia: empiezaCon(cod, ['33']) ? '33' : '32'
+            });
+        });
+
+        return { filas: filas, excluidas: excluidas };
+    }
+
+    /* =====================================================================
+       DETALLE (pedidos que consumen el material)
+       ===================================================================== */
+    function formatearDetalle(row) {
+        var html = '<div class="p-3 subtable rounded-3 border">' +
+            '<h6 class="fw-bold text-primary mb-2"><i class="bi bi-receipt me-1"></i> Pedidos que requieren ' + row.codigo + '</h6>' +
+            '<table class="table table-sm table-striped table-bordered bg-white mb-0">' +
+            '<thead class="table-secondary text-center"><tr><th>PD</th><th>Pos.</th><th>Cliente</th><th>Cantidad requerida (' + row.umb + ')</th></tr></thead><tbody>';
+        row.detalle.forEach(function(d) {
+            html += '<tr><td class="text-center fw-bold">' + d.pedido + '</td><td class="text-center">' + (d.pos || '') +
+                '</td><td>' + (d.cliente || '') + '</td><td class="text-end">' + fmt(d.cant, 3) + '</td></tr>';
+        });
+        return html + '</tbody></table></div>';
+    }
+
+    /* =====================================================================
+       INICIALIZACIÓN
+       ===================================================================== */
+    $(document).ready(function() {
+        cargarUltimaEjecucion();
+
+        $('#lblReglas').html(
+            '<i class="bi bi-shield-check text-success me-1"></i>' +
+            '<strong>Reglas activas:</strong> solo códigos ' + CONFIG.prefijosMateriaPrima.join(' / ') +
+            ' · excluye códigos ' + CONFIG.prefijosExcluidos.join(' / ') + ' y posiciones rechazadas · ' +
+            'bodegas conformes: ' + CONFIG.bodegasConformes.join(', ') +
+            ' · despuntes (aparte): ' + CONFIG.bodegasDespuntes.join(', ') +
+            ' · excluidas: ' + CONFIG.bodegasExcluidas.join(', ')
+        );
+
+        // Cargamos pedidos (con BOM) y stock MB52 en paralelo
+        var reqPedidos = $.getJSON('api_vista_operativa.php');
+        var reqStock   = $.getJSON('api_stock_mb52.php');
+
+        $.when(reqPedidos, reqStock).done(function(rp, rs) {
+            var pedidos = (rp[0] && rp[0].data) || [];
+            var stockRows = (rs[0] && rs[0].data) || [];
+            var resultado = consolidar(pedidos, stockRows);
+            construirTabla(resultado);
+        }).fail(function() {
+            $('#loading').addClass('d-none');
+            $('#errorBox').removeClass('d-none').text('No se pudo cargar la información (api_vista_operativa.php / api_stock_mb52.php).');
+        });
+    });
+
+    function construirTabla(resultado) {
+        var filas = resultado.filas;
+
+        // KPIs
+        var conFaltante = filas.filter(function(f) { return f.faltante > 0; }).length;
+        $('#kpiTotal').text(filas.length);
+        $('#kpiFaltante').text(conFaltante);
+        $('#kpiCubierto').text(filas.length - conFaltante);
+        $('#kpiExcluidas').text(resultado.excluidas);
+
+        // Encabezado dinámico
+        var th = '<th>Código SAP</th><th>Denominación</th><th>UMB</th>';
+        CONFIG.bodegasConformes.forEach(function(b) { th += '<th class="col-bodega">Stock Bod. ' + b + '</th>'; });
+        th += '<th class="col-total">Stock Libre Total</th>';
+        th += '<th class="col-despunte">Despuntes (Bod. ' + CONFIG.bodegasDespuntes.join('/') + ')</th>';
+        th += '<th>Cantidad Requerida Total</th>';
+        th += '<th class="col-faltante">Faltante / Déficit</th>';
+        $('#theadRow').html('<th style="width:40px;"></th>' + th);
+
+        // Columnas
+        var columnas = [
+            { className: 'details-control', orderable: false, data: null, defaultContent: '<i class="bi bi-plus-circle-fill"></i>' },
+            { data: 'codigo', className: 'text-center fw-bold text-primary' },
+            { data: 'desc', render: function(d, t, r) {
+                return d + (r.advertencia ? ' <i class="bi bi-exclamation-triangle-fill text-warning" title="UMB no convertible entre SAP y estructura"></i>' : '');
+            } },
+            { data: 'umb', className: 'text-center' }
+        ];
+        CONFIG.bodegasConformes.forEach(function(b) {
+            columnas.push({ data: null, className: 'text-end', render: function(d, t, r) {
+                return t === 'display' ? fmt(r.bod[b], 2) : r.bod[b];
+            } });
+        });
+        columnas.push({ data: 'libreTotal', className: 'text-end fw-bold text-success', render: function(d, t) { return t === 'display' ? fmt(d) : d; } });
+        columnas.push({ data: 'despunte', className: 'text-end col-despunte', render: function(d, t) { return t === 'display' ? fmt(d) : d; } });
+        columnas.push({ data: 'reqTotal', className: 'text-end fw-bold', render: function(d, t) { return t === 'display' ? fmt(d) : d; } });
+        columnas.push({ data: 'faltante', className: 'text-end fw-bold', render: function(d, t) {
+            if (t !== 'display') return d;
+            if (d > 0) return '<span class="badge bg-danger fs-6">' + fmt(d) + '</span>';
+            return '<span class="badge bg-success">Cubierto (' + fmt(Math.abs(d)) + ')</span>';
+        } });
+
+        $('#loading').addClass('d-none');
+        $('#tablaNecesidades').removeClass('d-none');
+
+        var idxFaltante = columnas.length - 1;
+
+        var tabla = $('#tablaNecesidades').DataTable({
+            data: filas,
+            columns: columnas,
+            order: [[idxFaltante, 'desc']],
+            pageLength: 25,
+            dom: '<"d-flex justify-content-between align-items-center mb-3"Bf>rt<"d-flex justify-content-between align-items-center mt-3"lip>',
+            buttons: [{
+                extend: 'excelHtml5',
+                text: '<i class="bi bi-file-earmark-excel me-1"></i> Descargar Necesidades en Excel',
+                className: 'btn btn-success btn-sm fw-bold',
+                title: 'REVESOL_Necesidades_Consolidadas_MP',
+                exportOptions: { columns: ':gt(0)', orthogonal: 'sort' }
+            }],
+            language: { url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json' }
+        });
+
+        // Expandir detalle por pedido
+        $('#tablaNecesidades tbody').on('click', 'td.details-control', function() {
+            var tr = $(this).closest('tr');
+            var row = tabla.row(tr);
+            if (row.child.isShown()) {
+                row.child.hide(); tr.removeClass('shown');
+                $(this).html('<i class="bi bi-plus-circle-fill"></i>');
+            } else {
+                row.child(formatearDetalle(row.data())).show(); tr.addClass('shown');
+                $(this).html('<i class="bi bi-dash-circle-fill"></i>');
+            }
+        });
+
+        // Filtros
+        $.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
+            if (settings.nTable.id !== 'tablaNecesidades') return true;
+            var f = tabla.row(dataIndex).data();
+            var fam = $('#selectFamilia').val();
+            if (fam && f.familia !== fam) return false;
+            var cob = $('#selectCobertura').val();
+            if (cob === 'faltante' && f.faltante <= 0) return false;
+            if (cob === 'cubierto' && f.faltante > 0) return false;
+            return true;
+        });
+
+        $('#inputBuscar').on('keyup input', function() { tabla.search(this.value).draw(); });
+        $('#selectFamilia, #selectCobertura').on('change', function() { tabla.draw(); });
+        $('#btnLimpiar').on('click', function() {
+            $('#inputBuscar').val('');
+            $('#selectFamilia').val('');
+            $('#selectCobertura').val('');
+            tabla.search('').draw();
+        });
+    }
+    </script>
+</body>
+</html>

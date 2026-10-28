@@ -66,25 +66,28 @@
             
             <!-- Barra de Navegación Principal -->
             <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom border-light-subtle">
-                <div class="d-flex align-items-center gap-2">
+             <div class="d-flex align-items-center gap-2 flex-wrap">
                     <h4 class="m-0 fw-bold text-white me-3"><i class="bi bi-cpu-fill text-info me-2"></i>Sistema Calculadora PV</h4>
-                    
-                    <!-- BOTONES DE NAVEGACIÓN ENTRE VISTAS -->
                     <a href="vista_operativa.html" class="btn btn-sm btn-light fw-semibold text-primary shadow-sm">
                         <i class="bi bi-diagram-3-fill me-1"></i> Vista Operativa BOM
                     </a>
-                    <a href="vista_filtrada.html" class="btn btn-sm btn-outline-light fw-semibold">
-                        <i class="bi bi-filter-square me-1"></i> Vista Filtrada 
+                    <a href="vista_filtrada.html" class="btn btn-sm btn-outline-light fw-semibold"> 
+                        <i class="bi bi-filter-square me-1"></i> Vista Filtrada
+                    </a>
+                    <a href="vista_bodegas.html" class="btn btn-sm btn-outline-light fw-semibold">
+                        <i class="bi bi-box-seam-fill me-1"></i> Bodegas
                     </a>
                 </div>
 
                 <!-- ÚLTIMA EJECUCIÓN -->
                 <div class="text-end">
-                    <span class="badge bg-light text-dark p-2 fs-6 shadow-sm">
-                        <i class="bi bi-clock-history text-primary me-1"></i> 
-                        <strong>Última ejecución:</strong> 
-                        <span id="lblUltimaEjecucion" class="text-primary fw-bold">Cargando...</span>
-                    </span>
+                    <div class="d-inline-flex align-items-center gap-1.5 bg-white border rounded-pill px-3 py-1 shadow-sm small">
+                        <i class="bi bi-clock-history text-primary"></i>
+                        <span class="text-muted fw-semibold">Última ejecución:</span>
+                        <span id="lblUltimaEjecucion" class="d-inline-flex align-items-center gap-1">
+                            <span class="spinner-border spinner-border-sm text-primary" role="status"></span>
+                        </span>
+                    </div>
                 </div>
             </div>
 
@@ -265,36 +268,45 @@
             });
         }
 
-     function cargarUltimaEjecucion() {
-            $.get('api_ultima_ejecucion.php', function(res) {
-                if (res.status === 'success' && res.data) {
-                    var reg = res.data;
-              // Función auxiliar para convertir "10:20:40" a "10:20 am" o "22:20:40" a "10:20 pm"
-            function formatearHora12(fechaStr) {
-                if (!fechaStr) return '';
-                return fechaStr.replace(/\b(\d{1,2}):(\d{2}):\d{2}\b/g, function(match, hh, mm) {
-                    var h = parseInt(hh, 10);
-                    if (h === 0) h = 12; // Formato 12 para las 00:00 o 12:00
-                    var hStr = h < 10 ? '0' + h : h; // Mantiene 2 dígitos en la hora
-                    return hStr + ':' + mm;
-                });
+      function cargarUltimaEjecucion() {
+    $.get('api_ultima_ejecucion.php', function(res) {
+        if (res.status === 'success' && res.data) {
+            var reg = res.data;
+
+            // Badge de estado minimalista
+            var badgeEstado = reg.estado === 'EXITOSO'
+                ? '<span class="badge bg-success-subtle text-success border border-success-subtle px-1.5 py-0.5 rounded">EXITOSO</span>'
+                : '<span class="badge bg-danger-subtle text-danger border border-danger-subtle px-1.5 py-0.5 rounded">ERROR</span>';
+
+            // Badge de variación y Tooltip enriquecido
+            var badgeComparacion = '';
+            if (reg.comparacion_semanal) {
+                var comp = reg.comparacion_semanal;
+                var colorClass = comp.es_mayor ? 'text-danger bg-danger-subtle border-danger-subtle' : 'text-success bg-success-subtle border-success-subtle';
+                var icono = comp.es_mayor ? '▲' : '▼';
+                
+                // Tooltip que combina promedio semanal + ejecución anterior
+                var accion = comp.es_mayor ? 'Demoró un ' : 'Fue un ';
+                var tooltipText = accion + comp.signo + ' respecto al promedio semanal. (Anterior: ' + reg.duracion_ayer + ')';
+
+                badgeComparacion = '<span class="badge ' + colorClass + ' border fw-semibold ms-1" title="' + tooltipText + '" style="cursor:help;">' +
+                                       icono + ' ' + comp.signo + ' vs sem.' +
+                                   '</span>';
             }
 
-            // Lógica de visualización en la interfaz
-            var estadoBadge = reg.estado === 'EXITOSO' 
-                ? '<span class="badge bg-success ms-1">EXITOSO</span>' 
-                : '<span class="badge bg-danger ms-1">ERROR</span>';
+            var contenido = '<span class="fw-medium text-dark">' + reg.fecha_inicio + '</span> ' +
+                            '<span class="text-secondary fw-semibold">(' + reg.duracion_formateada + ')</span> ' +
+                            badgeEstado + ' ' +
+                            badgeComparacion;
 
-            // Aplicamos la conversión a reg.fecha_inicio
-            var fechaFormateada = formatearHora12(reg.fecha_inicio);
-
-            var texto = fechaFormateada + ' (' + reg.duracion + ')' + estadoBadge;
-            $('#lblUltimaEjecucion').html(texto);
-                } else {
-                    $('#lblUltimaEjecucion').html('<span class="text-muted">Sin registros</span>');
-                }
-            });
+            $('#lblUltimaEjecucion').html(contenido);
+        } else {
+            $('#lblUltimaEjecucion').html('<span class="text-muted small">Sin registros</span>');
         }
+    }).fail(function() {
+        $('#lblUltimaEjecucion').html('<span class="text-danger small">Error</span>');
+    });
+}
 
 
         function formatearDetalleBOM(row) {
