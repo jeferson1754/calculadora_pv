@@ -19,12 +19,15 @@
         .subtable { background-color: #f1f3f5; font-size: 0.85rem; }
         th.col-bodega { background-color: #0d6efd !important; }
         th.col-despunte { background-color: #6c757d !important; }
-        th.col-total { background-color: #198754 !important; color: white !important }
+        th.col-total { background-color: #198754 !important; color: white !important; }
+        th.col-transito { background-color: #0dcaf0 !important; color: #000 !important; }
         th.col-faltante { background-color: #dc3545 !important; }
+        th.col-compra { background-color: #ffc107 !important; color: #000 !important; }
         td.col-despunte { background-color: #f3f4f6; color: #6c757d; }
         .kpi { border-left: 4px solid #0d6efd; }
         .kpi.danger { border-left-color: #dc3545; }
         .kpi.success { border-left-color: #198754; }
+        .kpi.warning { border-left-color: #ffc107; }
     </style>
 </head>
 <body class="p-4">
@@ -33,7 +36,7 @@
     <div class="card border-0 shadow-sm mb-4">
         <div class="card-body header-bg rounded-3 p-3">
             <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom border-light-subtle">
-                 <div class="d-flex align-items-center gap-2 flex-wrap">
+                <div class="d-flex align-items-center gap-2 flex-wrap">
                     <h4 class="m-0 fw-bold text-white me-3"><i class="bi bi-cpu-fill text-info me-2"></i>Sistema Calculadora PV</h4>
                     <a href="vista_operativa.html" class="btn btn-sm btn-outline-light fw-semibold">
                         <i class="bi bi-diagram-3-fill me-1"></i> Vista Operativa BOM
@@ -45,15 +48,15 @@
                         <i class="bi bi-box-seam-fill me-1"></i> Bodegas
                     </a>
                 </div>
-               <div class="text-end">
-    <div class="d-inline-flex align-items-center gap-1.5 bg-white border rounded-pill px-3 py-1 shadow-sm small">
-        <i class="bi bi-clock-history text-primary"></i>
-        <span class="text-muted fw-semibold">Última ejecución:</span>
-        <span id="lblUltimaEjecucion" class="d-inline-flex align-items-center gap-1">
-            <span class="spinner-border spinner-border-sm text-primary" role="status"></span>
-        </span>
-    </div>
-</div>
+                <div class="text-end">
+                    <div class="d-inline-flex align-items-center gap-2 bg-white border rounded-pill px-3 py-1 shadow-sm small">
+                        <i class="bi bi-clock-history text-primary"></i>
+                        <span class="text-muted fw-semibold">Última ejecución:</span>
+                        <span id="lblUltimaEjecucion" class="d-inline-flex align-items-center gap-1">
+                            <span class="spinner-border spinner-border-sm text-primary" role="status"></span>
+                        </span>
+                    </div>
+                </div>
             </div>
             <small class="text-white-50 d-block">
                 Suma acumulada de materias primas requeridas por todos los pedidos de venta pendientes, contrastada contra el stock libre (MB52) de bodegas conformes.
@@ -63,13 +66,15 @@
 
     <!-- KPIs -->
     <div class="row g-3 mb-4">
-        <div class="col-md-3"><div class="card kpi shadow-sm border-0"><div class="card-body py-2">
+        <div class="col-md"><div class="card kpi shadow-sm border-0"><div class="card-body py-2">
             <small class="text-muted">Materiales analizados</small><div class="fs-4 fw-bold" id="kpiTotal">-</div></div></div></div>
-        <div class="col-md-3"><div class="card kpi danger shadow-sm border-0"><div class="card-body py-2">
+        <div class="col-md"><div class="card kpi danger shadow-sm border-0"><div class="card-body py-2">
             <small class="text-muted">Con faltante (a comprar)</small><div class="fs-4 fw-bold text-danger" id="kpiFaltante">-</div></div></div></div>
-        <div class="col-md-3"><div class="card kpi success shadow-sm border-0"><div class="card-body py-2">
+        <div class="col-md"><div class="card kpi success shadow-sm border-0"><div class="card-body py-2">
             <small class="text-muted">Cubiertos por stock</small><div class="fs-4 fw-bold text-success" id="kpiCubierto">-</div></div></div></div>
-        <div class="col-md-3"><div class="card kpi shadow-sm border-0"><div class="card-body py-2">
+        <div class="col-md"><div class="card kpi warning shadow-sm border-0"><div class="card-body py-2">
+            <small class="text-muted">Costo estimado de compra</small><div class="fs-4 fw-bold" id="kpiCosto">-</div></div></div></div>
+        <div class="col-md"><div class="card kpi shadow-sm border-0"><div class="card-body py-2">
             <small class="text-muted">Posiciones excluidas (rechazadas / 37)</small><div class="fs-4 fw-bold" id="kpiExcluidas">-</div></div></div></div>
     </div>
 
@@ -132,30 +137,49 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
 
-    <script>
+<script>
     /* =====================================================================
        CONFIGURACIÓN DE REGLAS DE NEGOCIO (ajustar según definición SAP)
        ===================================================================== */
-       var CONFIG = {
+    var CONFIG = {
         // Diccionario de materias primas: solo códigos que empiezan con estos prefijos
         prefijosMateriaPrima: ['33', '32'],
         // Códigos excluidos (servicios de pintura, cobros especiales, refacturaciones)
         prefijosExcluidos: ['37'],
- 
-        // MB52: almacenes con material conforme (una columna por bodega)
-        // (deben ser las mismas que en api_stock_mb52.php)
-        bodegasConformes: ['1001','1003','1014', '1027','1029','1030','1032'],
+
+        // MB52: almacenes conformes productivos (SÍ suman al stock libre total)
+        bodegasConformes: ['1001', '1014'],
+        // MB52: almacenes en tránsito (NO suman al stock libre total, columna informativa)
+        bodegasTransito: ['1027', '1029', '1030', '1032'],
         // MB52: bodega de despuntes / retazos (columna aislada, NO suma al stock libre)
         bodegasDespuntes: ['1010'],
         // MB52: almacenes excluidos (despacho, inactivos)
-        bodegasExcluidas: ['1018']
+        bodegasExcluidas: ['1018', '1003'],
+
+        // --- PARÁMETROS DE COMPRA ---
+        largoBarraMetros: 6,           // Largo estándar de la tira (m)
+        precioPorBarraDefault: 2440,   // Precio por defecto de la tira ($)
+
+        // Largo de tira especial por código SAP (si no existe, usa largoBarraMetros)
+        largosEspecialesPorCodigo: {
+            // '33047303': 12
+        },
+        // Precio especial por tira, por código SAP (si no existe, usa precioPorBarraDefault)
+        preciosEspecialesPorBarra: {
+            // '33000123': 3100,
+            // '32004567': 2850
+        }
     };
 
-    /* Conversión de unidades de medida (a unidad base común) */
     var UNIDADES = {
-        'MM': { b: 'M',  f: 0.001 }, 'CM': { b: 'M',  f: 0.01 }, 'M':  { b: 'M',  f: 1 },
-        'MT': { b: 'M',  f: 1 },     'KM': { b: 'M',  f: 1000 },
-        'G':  { b: 'KG', f: 0.001 }, 'KG': { b: 'KG', f: 1 },    'TO': { b: 'KG', f: 1000 }
+        'MM': { b: 'M',  f: 0.001 },
+        'CM': { b: 'M',  f: 0.01  },
+        'M':  { b: 'M',  f: 1     },
+        'MT': { b: 'M',  f: 1     },
+        'KM': { b: 'M',  f: 1000  },
+        'G':  { b: 'KG', f: 0.001 },
+        'KG': { b: 'KG', f: 1     },
+        'TO': { b: 'KG', f: 1000  }
     };
 
     /* =====================================================================
@@ -170,7 +194,13 @@
     }
 
     function fmt(n, dec) {
-        return Number(n).toLocaleString('es-CL', { minimumFractionDigits: dec === undefined ? 2 : dec, maximumFractionDigits: dec === undefined ? 2 : dec });
+        var d = dec === undefined ? 2 : dec;
+        return Number(n).toLocaleString('es-CL', { minimumFractionDigits: d, maximumFractionDigits: d });
+    }
+
+    function redondear(n, dec) {
+        var f = Math.pow(10, dec === undefined ? 3 : dec);
+        return Math.round(n * f) / f;
     }
 
     function empiezaCon(codigo, prefijos) {
@@ -188,8 +218,16 @@
         var h = String(hacia || '').toUpperCase().trim();
         if (!d || !h || d === h) return { valor: valor, ok: true };
         var ud = UNIDADES[d], uh = UNIDADES[h];
-        if (ud && uh && ud.b === uh.b) return { valor: valor * ud.f / uh.f, ok: true };
+        if (ud && uh && ud.b === uh.b) {
+            return { valor: valor * (ud.f / uh.f), ok: true };
+        }
         return { valor: valor, ok: false };
+    }
+
+    /* Normaliza unidades lineales a Metros (M) */
+    function normalizarUnidad(umb) {
+        var u = String(umb || '').toUpperCase().trim();
+        return (u === 'MM' || u === 'MT') ? 'M' : u;
     }
 
     function norm(s) { return String(s === null || s === undefined ? '' : s).trim(); }
@@ -197,53 +235,52 @@
     /* =====================================================================
        ÚLTIMA EJECUCIÓN
        ===================================================================== */
-   function cargarUltimaEjecucion() {
-    $.get('api_ultima_ejecucion.php', function(res) {
-        if (res.status === 'success' && res.data) {
-            var reg = res.data;
+    function cargarUltimaEjecucion() {
+        $.get('api_ultima_ejecucion.php', function(res) {
+            if (res.status === 'success' && res.data) {
+                var reg = res.data;
 
-            // Badge de estado minimalista
-            var badgeEstado = reg.estado === 'EXITOSO'
-                ? '<span class="badge bg-success-subtle text-success border border-success-subtle px-1.5 py-0.5 rounded">EXITOSO</span>'
-                : '<span class="badge bg-danger-subtle text-danger border border-danger-subtle px-1.5 py-0.5 rounded">ERROR</span>';
+                var badgeEstado = reg.estado === 'EXITOSO'
+                    ? '<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 rounded">EXITOSO</span>'
+                    : '<span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1 rounded">ERROR</span>';
 
-            // Badge de variación y Tooltip enriquecido
-            var badgeComparacion = '';
-            if (reg.comparacion_semanal) {
-                var comp = reg.comparacion_semanal;
-                var colorClass = comp.es_mayor ? 'text-danger bg-danger-subtle border-danger-subtle' : 'text-success bg-success-subtle border-success-subtle';
-                var icono = comp.es_mayor ? '▲' : '▼';
-                
-                // Tooltip que combina promedio semanal + ejecución anterior
-                var accion = comp.es_mayor ? 'Demoró un ' : 'Fue un ';
-                var tooltipText = accion + comp.signo + ' respecto al promedio semanal. (Anterior: ' + reg.duracion_ayer + ')';
+                var badgeComparacion = '';
+                if (reg.comparacion_semanal) {
+                    var comp = reg.comparacion_semanal;
+                    var colorClass = comp.es_mayor ? 'text-danger bg-danger-subtle border-danger-subtle' : 'text-success bg-success-subtle border-success-subtle';
+                    var icono = comp.es_mayor ? '▲' : '▼';
 
-                badgeComparacion = '<span class="badge ' + colorClass + ' border fw-semibold ms-1" title="' + tooltipText + '" style="cursor:help;">' +
-                                       icono + ' ' + comp.signo + ' vs sem.' +
-                                   '</span>';
+                    var accion = comp.es_mayor ? 'Demoró un ' : 'Fue un ';
+                    var durAyer = reg.duracion_ayer ? ' (Anterior: ' + reg.duracion_ayer + ')' : '';
+                    var tooltipText = accion + comp.signo + ' respecto al promedio semanal.' + durAyer;
+
+                    badgeComparacion = '<span class="badge ' + colorClass + ' border fw-semibold ms-1" title="' + tooltipText + '" style="cursor:help;">' +
+                                           icono + ' ' + comp.signo + ' vs sem.' +
+                                       '</span>';
+                }
+
+                var duracionTxt = reg.duracion_formateada ? ' (' + reg.duracion_formateada + ')' : '';
+                var contenido = '<span class="fw-medium text-dark">' + reg.fecha_inicio + '</span> ' +
+                                '<span class="text-secondary fw-semibold">' + duracionTxt + '</span> ' +
+                                badgeEstado + ' ' +
+                                badgeComparacion;
+
+                $('#lblUltimaEjecucion').html(contenido);
+            } else {
+                $('#lblUltimaEjecucion').html('<span class="text-muted small">Sin registros</span>');
             }
-
-            var contenido = '<span class="fw-medium text-dark">' + reg.fecha_inicio + '</span> ' +
-                            '<span class="text-secondary fw-semibold">(' + reg.duracion_formateada + ')</span> ' +
-                            badgeEstado + ' ' +
-                            badgeComparacion;
-
-            $('#lblUltimaEjecucion').html(contenido);
-        } else {
-            $('#lblUltimaEjecucion').html('<span class="text-muted small">Sin registros</span>');
-        }
-    }).fail(function() {
-        $('#lblUltimaEjecucion').html('<span class="text-danger small">Error</span>');
-    });
-}
+        }).fail(function() {
+            $('#lblUltimaEjecucion').html('<span class="text-danger small">Error</span>');
+        });
+    }
 
     /* =====================================================================
-       CONSOLIDACIÓN
+       CONSOLIDACIÓN (Stock MB52 + Pedidos, homologados a Metros)
        ===================================================================== */
     function consolidar(pedidos, stockRows) {
         var excluidas = 0;
 
-        /* --- 1. Stock MB52 por material, filtrando bodegas --- */
+        /* --- 1. Stock MB52 por material (convirtiendo MM -> M) --- */
         var stock = {};
         (stockRows || []).forEach(function(r) {
             var mat = norm(r.Material).replace(/^0+/, '');
@@ -252,14 +289,36 @@
             if (CONFIG.bodegasExcluidas.indexOf(alm) > -1) return;
 
             var esConforme = CONFIG.bodegasConformes.indexOf(alm) > -1;
+            var esTransito = CONFIG.bodegasTransito.indexOf(alm) > -1;
             var esDespunte = CONFIG.bodegasDespuntes.indexOf(alm) > -1;
-            if (!esConforme && !esDespunte) return; // bodega no autorizada
 
-            if (!stock[mat]) stock[mat] = { desc: norm(r.Descripcion), umb: norm(r.UMB), bod: {}, despunte: 0 };
+            if (!esConforme && !esTransito && !esDespunte) return;
+
+            var umbOrig = norm(r.UMB);
+            var umbFinal = normalizarUnidad(umbOrig);
+
+            if (!stock[mat]) {
+                stock[mat] = {
+                    desc: norm(r.Descripcion),
+                    umb: umbFinal,
+                    bod: {},
+                    bodTransito: {},
+                    transitoTotal: 0,
+                    despunte: 0
+                };
+            }
             if (!stock[mat].desc && r.Descripcion) stock[mat].desc = norm(r.Descripcion);
-            var libre = parseNum(r.StockLibre);
-            if (esConforme) stock[mat].bod[alm] = (stock[mat].bod[alm] || 0) + libre;
-            else stock[mat].despunte += libre;
+
+            var libre = convertir(parseNum(r.StockLibre), umbOrig, umbFinal).valor;
+
+            if (esConforme) {
+                stock[mat].bod[alm] = (stock[mat].bod[alm] || 0) + libre;
+            } else if (esTransito) {
+                stock[mat].bodTransito[alm] = (stock[mat].bodTransito[alm] || 0) + libre;
+                stock[mat].transitoTotal += libre;
+            } else if (esDespunte) {
+                stock[mat].despunte += libre;
+            }
         });
 
         /* --- 2. Necesidades acumuladas por componente --- */
@@ -275,31 +334,48 @@
                 var cod = norm(c.Componente).replace(/^0+/, '');
                 if (!esMateriaPrima(cod)) return;
 
-                if (!req[cod]) req[cod] = { desc: norm(c.DescComponente), umbOrig: norm(c.UMB), items: [] };
+                var umbOrig = norm(c.UMB);
+
+                if (!req[cod]) {
+                    req[cod] = {
+                        desc: norm(c.DescComponente),
+                        umb: normalizarUnidad(umbOrig),
+                        items: []
+                    };
+                }
+
                 req[cod].items.push({
-                    pedido: p.Pedido, pos: p.PosPed, cliente: p.Cliente,
-                    cant: parseNum(c.CantidadTotal), umb: norm(c.UMB)
+                    pedido: p.Pedido,
+                    pos: p.PosPed,
+                    cliente: p.Cliente,
+                    cantOrig: parseNum(c.CantidadTotal),
+                    umbOrig: umbOrig
                 });
             });
         });
 
-        /* --- 3. Unir requerimiento + stock con UMB homogénea --- */
-        var codigos = {};
-        Object.keys(req).forEach(function(k) { codigos[k] = 1; });
-
+        /* --- 3. Unión requerimiento + stock y cálculo de compra --- */
         var filas = [];
-        Object.keys(codigos).forEach(function(cod) {
+        Object.keys(req).forEach(function(cod) {
             var r = req[cod];
             var s = stock[cod];
-            var umbDestino = (s && s.umb) ? s.umb : r.umbOrig;
+
+            // Unidad final: la del stock SAP si existe, si no la del requerimiento
+            var umbDestino = normalizarUnidad((s && s.umb) ? s.umb : r.umb);
             var advertencia = false;
 
             var reqTotal = 0;
             var detalle = r.items.map(function(it) {
-                var cv = convertir(it.cant, it.umb, umbDestino);
+                var cv = convertir(it.cantOrig, it.umbOrig, umbDestino);
                 if (!cv.ok) advertencia = true;
                 reqTotal += cv.valor;
-                return { pedido: it.pedido, pos: it.pos, cliente: it.cliente, cant: cv.valor };
+                return {
+                    pedido: it.pedido,
+                    pos: it.pos,
+                    cliente: it.cliente,
+                    cant: cv.valor,
+                    umb: umbDestino
+                };
             });
 
             var bod = {};
@@ -309,15 +385,43 @@
                 libreTotal += bod[b];
             });
 
+            var transitoTotal = s ? s.transitoTotal : 0;
+
+            // Redondeo a 3 decimales para evitar ruido de coma flotante (MM -> M)
+            reqTotal   = redondear(reqTotal, 3);
+            libreTotal = redondear(libreTotal, 3);
+            var faltante = redondear(reqTotal - libreTotal, 3);
+
+            // --- BARRAS Y VALORIZACIÓN ---
+            var largoBarra = CONFIG.largosEspecialesPorCodigo[cod] || CONFIG.largoBarraMetros;
+            var precioBarra = CONFIG.preciosEspecialesPorBarra[cod] || CONFIG.precioPorBarraDefault;
+            var barrasAComprar = 0;
+            var metrosAComprar = 0;
+            var costoEstimado = 0;
+
+            if (faltante > 0 && umbDestino === 'M') {
+                barrasAComprar = Math.ceil(faltante / largoBarra);
+                metrosAComprar = barrasAComprar * largoBarra;
+                costoEstimado = barrasAComprar * precioBarra;
+            }
+
             filas.push({
                 codigo: cod,
                 desc: r.desc || (s ? s.desc : ''),
                 umb: umbDestino,
                 bod: bod,
-                despunte: s ? s.despunte : 0,
                 libreTotal: libreTotal,
+                transito: redondear(transitoTotal, 3),
+                despunte: s ? redondear(s.despunte, 3) : 0,
                 reqTotal: reqTotal,
-                faltante: reqTotal - libreTotal,
+                faltante: faltante,
+
+                barrasAComprar: barrasAComprar,
+                metrosAComprar: metrosAComprar,
+                largoBarra: largoBarra,
+                precioBarra: precioBarra,
+                costoEstimado: costoEstimado,
+
                 detalle: detalle,
                 advertencia: advertencia,
                 familia: empiezaCon(cod, ['33']) ? '33' : '32'
@@ -353,8 +457,10 @@
             '<strong>Reglas activas:</strong> solo códigos ' + CONFIG.prefijosMateriaPrima.join(' / ') +
             ' · excluye códigos ' + CONFIG.prefijosExcluidos.join(' / ') + ' y posiciones rechazadas · ' +
             'bodegas conformes: ' + CONFIG.bodegasConformes.join(', ') +
+            ' · tránsito (informativo): ' + CONFIG.bodegasTransito.join(', ') +
             ' · despuntes (aparte): ' + CONFIG.bodegasDespuntes.join(', ') +
-            ' · excluidas: ' + CONFIG.bodegasExcluidas.join(', ')
+            ' · excluidas: ' + CONFIG.bodegasExcluidas.join(', ') +
+            ' · compra en tiras de ' + CONFIG.largoBarraMetros + ' m'
         );
 
         // Cargamos pedidos (con BOM) y stock MB52 en paralelo
@@ -362,10 +468,16 @@
         var reqStock   = $.getJSON('api_stock_mb52.php');
 
         $.when(reqPedidos, reqStock).done(function(rp, rs) {
-            var pedidos = (rp[0] && rp[0].data) || [];
-            var stockRows = (rs[0] && rs[0].data) || [];
-            var resultado = consolidar(pedidos, stockRows);
-            construirTabla(resultado);
+            try {
+                var pedidos = (rp[0] && rp[0].data) || [];
+                var stockRows = (rs[0] && rs[0].data) || [];
+                var resultado = consolidar(pedidos, stockRows);
+                construirTabla(resultado);
+            } catch (e) {
+                console.error(e);
+                $('#loading').addClass('d-none');
+                $('#errorBox').removeClass('d-none').text('Error al procesar la información: ' + e.message);
+            }
         }).fail(function() {
             $('#loading').addClass('d-none');
             $('#errorBox').removeClass('d-none').text('No se pudo cargar la información (api_vista_operativa.php / api_stock_mb52.php).');
@@ -377,47 +489,87 @@
 
         // KPIs
         var conFaltante = filas.filter(function(f) { return f.faltante > 0; }).length;
+        var costoTotal = filas.reduce(function(acc, f) { return acc + f.costoEstimado; }, 0);
+
         $('#kpiTotal').text(filas.length);
         $('#kpiFaltante').text(conFaltante);
         $('#kpiCubierto').text(filas.length - conFaltante);
+        $('#kpiCosto').text('$ ' + fmt(costoTotal, 0));
         $('#kpiExcluidas').text(resultado.excluidas);
 
-        // Encabezado dinámico
+        // Encabezados dinámicos
         var th = '<th>Código SAP</th><th>Denominación</th><th>UMB</th>';
         CONFIG.bodegasConformes.forEach(function(b) { th += '<th class="col-bodega">Stock Bod. ' + b + '</th>'; });
         th += '<th class="col-total">Stock Libre Total</th>';
+        th += '<th class="col-transito">En Tránsito (' + CONFIG.bodegasTransito.join('/') + ')</th>';
         th += '<th class="col-despunte">Despuntes (Bod. ' + CONFIG.bodegasDespuntes.join('/') + ')</th>';
         th += '<th>Cantidad Requerida Total</th>';
         th += '<th class="col-faltante">Faltante / Déficit</th>';
+        th += '<th class="col-compra">Compra Sugerida (tiras)</th>';
+        th += '<th class="col-compra">Costo Compra ($)</th>';
+
         $('#theadRow').html('<th style="width:40px;"></th>' + th);
 
-        // Columnas
+        // Definición de columnas
         var columnas = [
             { className: 'details-control', orderable: false, data: null, defaultContent: '<i class="bi bi-plus-circle-fill"></i>' },
             { data: 'codigo', className: 'text-center fw-bold text-primary' },
             { data: 'desc', render: function(d, t, r) {
-                return d + (r.advertencia ? ' <i class="bi bi-exclamation-triangle-fill text-warning" title="UMB no convertible entre SAP y estructura"></i>' : '');
+                if (t !== 'display') return d;
+                return d + (r.advertencia ? ' <i class="bi bi-exclamation-triangle-fill text-warning" title="UMB no convertible"></i>' : '');
             } },
             { data: 'umb', className: 'text-center' }
         ];
+
         CONFIG.bodegasConformes.forEach(function(b) {
             columnas.push({ data: null, className: 'text-end', render: function(d, t, r) {
                 return t === 'display' ? fmt(r.bod[b], 2) : r.bod[b];
             } });
         });
-        columnas.push({ data: 'libreTotal', className: 'text-end fw-bold text-success', render: function(d, t) { return t === 'display' ? fmt(d) : d; } });
-        columnas.push({ data: 'despunte', className: 'text-end col-despunte', render: function(d, t) { return t === 'display' ? fmt(d) : d; } });
-        columnas.push({ data: 'reqTotal', className: 'text-end fw-bold', render: function(d, t) { return t === 'display' ? fmt(d) : d; } });
+
+        columnas.push({ data: 'libreTotal', className: 'text-end fw-bold text-success', render: function(d, t) {
+            return t === 'display' ? fmt(d) : d;
+        } });
+
+        columnas.push({ data: 'transito', className: 'text-end fw-semibold', render: function(d, t) {
+            if (t !== 'display') return d;
+            return d > 0 ? '<span class="badge bg-info-subtle text-dark border border-info">' + fmt(d) + '</span>' : fmt(0);
+        } });
+
+        columnas.push({ data: 'despunte', className: 'text-end col-despunte', render: function(d, t) {
+            return t === 'display' ? fmt(d) : d;
+        } });
+
+        columnas.push({ data: 'reqTotal', className: 'text-end fw-bold', render: function(d, t) {
+            return t === 'display' ? fmt(d) : d;
+        } });
+
         columnas.push({ data: 'faltante', className: 'text-end fw-bold', render: function(d, t) {
             if (t !== 'display') return d;
             if (d > 0) return '<span class="badge bg-danger fs-6">' + fmt(d) + '</span>';
             return '<span class="badge bg-success">Cubierto (' + fmt(Math.abs(d)) + ')</span>';
         } });
 
+        columnas.push({ data: 'barrasAComprar', className: 'text-center fw-bold', render: function(d, t, r) {
+            if (t !== 'display') return d;
+            if (d > 0) {
+                return '<span class="badge bg-warning text-dark border border-warning" title="Tira de ' + r.largoBarra + ' m">' +
+                       d + ' tiras (' + fmt(r.metrosAComprar, 0) + ' M)</span>';
+            }
+            return '<span class="text-muted">-</span>';
+        } });
+
+        columnas.push({ data: 'costoEstimado', className: 'text-end fw-bold text-dark', render: function(d, t, r) {
+            if (t !== 'display') return d;
+            if (d > 0) return '<span title="Precio tira: $' + fmt(r.precioBarra, 0) + '">$ ' + fmt(d, 0) + '</span>';
+            return '<span class="text-muted">$ 0</span>';
+        } });
+
         $('#loading').addClass('d-none');
         $('#tablaNecesidades').removeClass('d-none');
 
-        var idxFaltante = columnas.length - 1;
+        // Orden por defecto: Faltante (antepenúltima columna)
+        var idxFaltante = columnas.length - 3;
 
         var tabla = $('#tablaNecesidades').DataTable({
             data: filas,
@@ -469,6 +621,6 @@
             tabla.search('').draw();
         });
     }
-    </script>
+</script>
 </body>
 </html>

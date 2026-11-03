@@ -43,11 +43,14 @@ $T_MAT = [
     'material'    => 'codigo_material',
     'descripcion' => 'descripcion',
 ];
-
-// Almacenes que se entregan (conformes + despuntes). Todo lo demás se omite.
-$BODEGAS_CONFORMES = ['1032', '1029','1030','1027','1003','1001','1014'];
+// Almacenes productivos que SÍ suman al stock total disponible
+$BODEGAS_CONFORMES = ['1001', '1014'];
+// Almacenes de despunte (evaluar según tu regla de negocio si suman o no al total)
 $BODEGAS_DESPUNTES = ['1010'];
-$BODEGAS_EXCLUIDAS = ['1018'];   // despacho / inactivos
+// Almacenes en tránsito: se registran/muestran pero NO suman al stock disponible total
+$BODEGAS_TRANSITO  = ['1027', '1029', '1030', '1032'];
+// Almacenes excluidos por completo
+$BODEGAS_EXCLUIDAS = ['1018', '1003']; // despacho / inactivos
 
 // Prefijos de materias primas permitidas (diccionario) y excluidos
 $PREFIJOS_MP       = ['33', '32'];
@@ -109,8 +112,9 @@ try {
         ]
     );
 
+    // Se combinan conformes, despuntes y tránsito (excluyendo únicamente 1018/inactivos)
     $bodegasValidas = array_values(array_diff(
-        array_merge($BODEGAS_CONFORMES, $BODEGAS_DESPUNTES),
+        array_merge($BODEGAS_CONFORMES, $BODEGAS_DESPUNTES, $BODEGAS_TRANSITO),
         $BODEGAS_EXCLUIDAS
     ));
 
@@ -120,7 +124,6 @@ try {
 
     $in = implode(',', array_fill(0, count($bodegasValidas), '?'));
 
-    // Los nombres de tabla/columna vienen de la configuración de arriba (no del usuario)
     $sql = "
         SELECT
             s.`{$T_STOCK['material']}`    AS Material,
@@ -138,8 +141,7 @@ try {
     $stmt->execute($bodegasValidas);
 
     /* -----------------------------------------------------------------
-       Agrupar por Material + Almacén (SAP puede traer varias filas:
-       lotes, centros, etc.) y aplicar el diccionario de materias primas
+       Agrupar por Material + Almacén
        ----------------------------------------------------------------- */
     $agrupado = [];
 
@@ -147,7 +149,6 @@ try {
         $material = limpiarCodigo($r['Material']);
         if ($material === '') continue;
 
-        // Solo diccionario de materias primas (33 / 32) y sin códigos 37
         if (!empiezaCon($material, $PREFIJOS_MP))        continue;
         if (empiezaCon($material, $PREFIJOS_EXCLUIDOS))  continue;
 
@@ -155,18 +156,30 @@ try {
         $clave   = $material . '|' . $almacen;
 
         if (!isset($agrupado[$clave])) {
+            // Clasificación del almacén
+            $esTransito = in_array($almacen, $BODEGAS_TRANSITO);
+            $tipo = 'CONFORME';
+            if ($esTransito) {
+                $tipo = 'TRANSITO';
+            } elseif (in_array($almacen, $BODEGAS_DESPUNTES)) {
+                $tipo = 'DESPUNTE';
+            }
+
             $agrupado[$clave] = [
                 'Material'    => $material,
                 'Descripcion' => trim((string)($r['Descripcion'] ?? '')),
                 'UMB'         => strtoupper(trim((string)$r['UMB'])),
                 'Almacen'     => $almacen,
+                'Tipo'        => $tipo,
+                'EsTransito'  => $esTransito,
+                'Computable'  => !$esTransito, // false para 1027-1032: no suma al total disponible
                 'StockLibre'  => 0.0,
             ];
         }
         $agrupado[$clave]['StockLibre'] += parseNumSap($r['StockLibre']);
     }
 
-    // Redondeo para evitar ruido de coma flotante
+    // Redondeo final
     $data = array_map(function ($f) {
         $f['StockLibre'] = round($f['StockLibre'], 3);
         return $f;
@@ -174,7 +187,6 @@ try {
 
     responder(['status' => 'success', 'total' => count($data), 'data' => $data]);
 } catch (Throwable $e) {
-    // No exponer detalles internos al navegador; registrar en el log del servidor
     error_log('[api_stock_mb52] ' . $e->getMessage());
     responder(['status' => 'error', 'message' => 'Error al consultar el stock MB52.'], 500);
 }
