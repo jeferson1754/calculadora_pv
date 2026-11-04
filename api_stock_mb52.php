@@ -3,13 +3,14 @@
 /**
  * api_stock_mb52.php
  * Entrega el stock libre de utilización (MB52) por material y almacén,
- * con la descripción del material (MM60).
+ * con la descripción del material (MM60) y el valor total de stock (Valor_Total).
  *
  * Respuesta:
- * { "status":"success", "data":[ {Material, Descripcion, UMB, Almacen, StockLibre}, ... ] }
+ * { "status":"success", "data":[ {Material, Descripcion, UMB, Almacen, Tipo, EsTransito,
+ *                                 Computable, StockLibre, ValorTotal, ValorUnitario}, ... ] }
  *
- * El filtrado de bodegas conformes / despuntes / excluidas se hace aquí
- * (primera barrera) y también en el front (CONFIG).
+ * ValorUnitario = ValorTotal / StockLibre (por almacén, en la UMB de SAP).
+ * El front recalcula un valor unitario ponderado por material en la UMB homologada.
  */
 
 header('Content-Type: application/json; charset=utf-8');
@@ -19,8 +20,6 @@ header('Cache-Control: no-store');
    1. CONFIGURACIÓN  (AJUSTAR A TU BASE DE DATOS)
    ===================================================================== */
 
-// Conexión MySQL. Si ya tienes un archivo de conexión (usado por api_parametros.php),
-// reemplaza este bloque por: require_once 'conexion.php';  y usa tu $pdo.
 $DB = [
     'host'    => 'localhost',
     'dbname'  => 'calculadora_pv',
@@ -31,29 +30,31 @@ $DB = [
 
 // Tablas y columnas donde guardas lo extraído de SAP
 $T_STOCK = [
-    'tabla'       => 'maestro_bodegas',      // extracción MB52
+    'tabla'       => 'maestro_bodegas',   // extracción MB52
     'material'    => 'Componente',
     'almacen'     => 'Almacén',
     'umb'         => 'UMB',
-    'stock_libre' => 'Stock_Libre',    // "Libre utilización"
+    'stock_libre' => 'Stock_Libre',       // "Libre utilización"
+    'valor_total' => 'Valor_Total',       // Valor del stock
 ];
 
 $T_MAT = [
-    'tabla'       => 'maestro_codigos_32_33',      // extracción MM60 (descripciones)
+    'tabla'       => 'maestro_codigos_32_33',   // extracción MM60 (descripciones)
     'material'    => 'codigo_material',
     'descripcion' => 'descripcion',
 ];
+
 // Almacenes productivos que SÍ suman al stock total disponible
 $BODEGAS_CONFORMES = ['1001', '1014'];
-// Almacenes de despunte (evaluar según tu regla de negocio si suman o no al total)
+// Almacenes de despunte
 $BODEGAS_DESPUNTES = ['1010'];
-// Almacenes en tránsito: se registran/muestran pero NO suman al stock disponible total
+// Almacenes en tránsito: se muestran pero NO suman al stock disponible total
 $BODEGAS_TRANSITO  = ['1027', '1029', '1030', '1032'];
 // Almacenes excluidos por completo
-$BODEGAS_EXCLUIDAS = ['1018', '1003']; // despacho / inactivos
+$BODEGAS_EXCLUIDAS = ['1018', '1003'];
 
 // Prefijos de materias primas permitidas (diccionario) y excluidos
-$PREFIJOS_MP       = ['33', '32'];
+$PREFIJOS_MP        = ['33', '32'];
 $PREFIJOS_EXCLUIDOS = ['37'];
 
 /* =====================================================================
@@ -69,7 +70,7 @@ function parseNumSap($v)
     if (substr($s, -1) === '-') {
         $negativo = true;
         $s = substr($s, 0, -1);
-    }  // formato SAP "100-"
+    }
     if (strpos($s, ',') !== false) {
         $s = str_replace('.', '', $s);
         $s = str_replace(',', '.', $s);
@@ -112,7 +113,6 @@ try {
         ]
     );
 
-    // Se combinan conformes, despuntes y tránsito (excluyendo únicamente 1018/inactivos)
     $bodegasValidas = array_values(array_diff(
         array_merge($BODEGAS_CONFORMES, $BODEGAS_DESPUNTES, $BODEGAS_TRANSITO),
         $BODEGAS_EXCLUIDAS
@@ -130,6 +130,7 @@ try {
             s.`{$T_STOCK['almacen']}`     AS Almacen,
             s.`{$T_STOCK['umb']}`         AS UMB,
             s.`{$T_STOCK['stock_libre']}` AS StockLibre,
+            s.`{$T_STOCK['valor_total']}` AS ValorTotal,
             m.`{$T_MAT['descripcion']}`   AS Descripcion
         FROM `{$T_STOCK['tabla']}` s
         LEFT JOIN `{$T_MAT['tabla']}` m
@@ -156,12 +157,11 @@ try {
         $clave   = $material . '|' . $almacen;
 
         if (!isset($agrupado[$clave])) {
-            // Clasificación del almacén
-            $esTransito = in_array($almacen, $BODEGAS_TRANSITO);
+            $esTransito = in_array($almacen, $BODEGAS_TRANSITO, true);
             $tipo = 'CONFORME';
             if ($esTransito) {
                 $tipo = 'TRANSITO';
-            } elseif (in_array($almacen, $BODEGAS_DESPUNTES)) {
+            } elseif (in_array($almacen, $BODEGAS_DESPUNTES, true)) {
                 $tipo = 'DESPUNTE';
             }
 
@@ -172,16 +172,20 @@ try {
                 'Almacen'     => $almacen,
                 'Tipo'        => $tipo,
                 'EsTransito'  => $esTransito,
-                'Computable'  => !$esTransito, // false para 1027-1032: no suma al total disponible
+                'Computable'  => !$esTransito,
                 'StockLibre'  => 0.0,
+                'ValorTotal'  => 0.0,
             ];
         }
         $agrupado[$clave]['StockLibre'] += parseNumSap($r['StockLibre']);
+        $agrupado[$clave]['ValorTotal'] += parseNumSap($r['ValorTotal']);
     }
 
-    // Redondeo final
+    // Redondeo final y valor unitario por almacén
     $data = array_map(function ($f) {
-        $f['StockLibre'] = round($f['StockLibre'], 3);
+        $f['StockLibre']    = round($f['StockLibre'], 3);
+        $f['ValorTotal']    = round($f['ValorTotal'], 2);
+        $f['ValorUnitario'] = $f['StockLibre'] > 0 ? round($f['ValorTotal'] / $f['StockLibre'], 4) : 0;
         return $f;
     }, array_values($agrupado));
 

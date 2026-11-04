@@ -22,6 +22,7 @@
         th.col-total { background-color: #198754 !important; color: white !important; }
         th.col-transito { background-color: #0dcaf0 !important; color: #000 !important; }
         th.col-faltante { background-color: #dc3545 !important; }
+        th.col-valor { background-color: #6f42c1 !important; color: #fff !important; }
         th.col-compra { background-color: #ffc107 !important; color: #000 !important; }
         td.col-despunte { background-color: #f3f4f6; color: #6c757d; }
         .kpi { border-left: 4px solid #0d6efd; }
@@ -304,12 +305,21 @@
                     bod: {},
                     bodTransito: {},
                     transitoTotal: 0,
-                    despunte: 0
+                    despunte: 0,
+                    valorAcum: 0,   // suma de Valor_Total ($)
+                    stockValAcum: 0 // stock (en UMB homologada) que respalda ese valor
                 };
             }
             if (!stock[mat].desc && r.Descripcion) stock[mat].desc = norm(r.Descripcion);
 
             var libre = convertir(parseNum(r.StockLibre), umbOrig, umbFinal).valor;
+
+            // Valor unitario ponderado: solo filas con stock y valor positivos
+            var valorFila = parseNum(r.ValorTotal);
+            if (libre > 0 && valorFila > 0) {
+                stock[mat].valorAcum += valorFila;
+                stock[mat].stockValAcum += libre;
+            }
 
             if (esConforme) {
                 stock[mat].bod[alm] = (stock[mat].bod[alm] || 0) + libre;
@@ -387,6 +397,9 @@
 
             var transitoTotal = s ? s.transitoTotal : 0;
 
+            // Valor unitario ($ por UMB homologada) = Valor_Total / stock
+            var valorUnitario = (s && s.stockValAcum > 0) ? s.valorAcum / s.stockValAcum : 0;
+
             // Redondeo a 3 decimales para evitar ruido de coma flotante (MM -> M)
             reqTotal   = redondear(reqTotal, 3);
             libreTotal = redondear(libreTotal, 3);
@@ -415,6 +428,7 @@
                 despunte: s ? redondear(s.despunte, 3) : 0,
                 reqTotal: reqTotal,
                 faltante: faltante,
+                valorUnitario: redondear(valorUnitario, 4),
 
                 barrasAComprar: barrasAComprar,
                 metrosAComprar: metrosAComprar,
@@ -505,6 +519,7 @@
         th += '<th class="col-despunte">Despuntes (Bod. ' + CONFIG.bodegasDespuntes.join('/') + ')</th>';
         th += '<th>Cantidad Requerida Total</th>';
         th += '<th class="col-faltante">Faltante / Déficit</th>';
+        th += '<th class="col-valor">Valor Unitario ($)</th>';
         th += '<th class="col-compra">Compra Sugerida (tiras)</th>';
         th += '<th class="col-compra">Costo Compra ($)</th>';
 
@@ -550,6 +565,12 @@
             return '<span class="badge bg-success">Cubierto (' + fmt(Math.abs(d)) + ')</span>';
         } });
 
+        columnas.push({ data: 'valorUnitario', className: 'text-end fw-semibold', render: function(d, t, r) {
+            if (t !== 'display') return d;
+            if (d > 0) return '$ ' + fmt(d, 2) + ' <small class="text-muted">/' + r.umb + '</small>';
+            return '<span class="text-muted">-</span>';
+        } });
+
         columnas.push({ data: 'barrasAComprar', className: 'text-center fw-bold', render: function(d, t, r) {
             if (t !== 'display') return d;
             if (d > 0) {
@@ -568,8 +589,8 @@
         $('#loading').addClass('d-none');
         $('#tablaNecesidades').removeClass('d-none');
 
-        // Orden por defecto: Faltante (antepenúltima columna)
-        var idxFaltante = columnas.length - 3;
+        // Orden por defecto: Faltante (4.ª desde el final: Faltante, Valor Unit., Compra, Costo)
+        var idxFaltante = columnas.length - 4;
 
         var tabla = $('#tablaNecesidades').DataTable({
             data: filas,
