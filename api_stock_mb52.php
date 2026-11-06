@@ -65,15 +65,20 @@ $PREFIJOS_EXCLUIDOS = ['37'];
 function parseNumSap($v)
 {
     if ($v === null || $v === '') return 0.0;
-    $s = trim((string)$v);
+    // Quita espacios normales y no separables ("            1.005")
+    $s = trim(str_replace("\xC2\xA0", ' ', (string)$v));
     $negativo = false;
     if (substr($s, -1) === '-') {
         $negativo = true;
-        $s = substr($s, 0, -1);
+        $s = trim(substr($s, 0, -1));
     }
     if (strpos($s, ',') !== false) {
+        // Formato SAP con decimales: 1.234,56
         $s = str_replace('.', '', $s);
         $s = str_replace(',', '.', $s);
+    } elseif (preg_match('/^[1-9]\d{0,2}(\.\d{3})+$/', $s)) {
+        // Solo separador de miles, sin decimales: 1.005 => 1005 | 1.234.567 => 1234567
+        $s = str_replace('.', '', $s);
     }
     $n = (float)$s;
     return $negativo ? -$n : $n;
