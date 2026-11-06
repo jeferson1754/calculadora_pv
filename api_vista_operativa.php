@@ -74,44 +74,65 @@ try {
                 )
             )
         ";
-    }else{
+    } else {
 
-      $sqlCabeceras = "
-       SELECT DISTINCT 
-                COALESCE(Nombre, '') AS Cliente,
-                Pedido,
-                    `Texto breve de material` as texto_breve,
-            `Pos._PD` AS PosPed,
-            `RCtrP` AS RespCtrPr,
-            Origen,
-                Material AS Producto,
-                `Ctd.ped.` AS CtdPed,
-                `Valor neto` AS ValorNeto,
-                `Mon.` AS Moneda,
-                `Fecha Probable` AS FechaProbable,
-                COALESCE(Estado, 'PRODUCTIVO') AS Estado,
-                Motivo_Rechazo
-            FROM vista_productiva_bom
+        $sqlCabeceras = "
+SELECT DISTINCT 
+    COALESCE(v.Nombre, '') AS Cliente,
+    v.Pedido,
+    v.`Texto breve de material` AS texto_breve,
+    -- Si el pedido tiene un rechazo registrado, sobreescribe la posición; si no, deja la original
+    COALESCE(NULLIF(h.posicion, ''), v.`Pos._PD`) AS PosPed,
+    v.`RCtrP` AS RespCtrPr,
+    v.Origen,
+    -- Si el pedido tiene un rechazo registrado, sobreescribe el material; si no, deja el original
+    COALESCE(NULLIF(h.material, ''), v.Material) AS Producto,
+    v.`Ctd.ped.` AS CtdPed,
+    v.`Valor neto` AS ValorNeto,
+    v.`Mon.` AS Moneda,
+    v.`Fecha Probable` AS FechaProbable,
+    -- Estado: pasa a RECHAZADO si existe motivo
+    CASE 
+        WHEN COALESCE(NULLIF(TRIM(v.Motivo_Rechazo), ''), NULLIF(TRIM(h.motivo_rechazo), '')) IS NOT NULL 
+        THEN 'RECHAZADO'
+        ELSE COALESCE(v.Estado, 'PRODUCTIVO')
+    END AS Estado,
+    -- Motivo de rechazo consolidado
+    COALESCE(NULLIF(TRIM(v.Motivo_Rechazo), ''), TRIM(h.motivo_rechazo), '') AS Motivo_Rechazo
 
-            UNION ALL
+FROM vista_productiva_bom v
+LEFT JOIN (
+    -- Busca el último rechazo por número de pedido (independiente de la posición original de la vista)
+    SELECT pedido, posicion, material, motivo_rechazo
+    FROM historial_rechazados_va03
+    WHERE id IN (
+        SELECT MAX(id)
+        FROM historial_rechazados_va03
+        GROUP BY pedido
+    )
+) h ON TRIM(LEADING '0' FROM v.Pedido) = TRIM(LEADING '0' FROM h.pedido)
 
-            SELECT DISTINCT 
-                COALESCE(Nombre, '') AS Cliente,
-                Pedido,
-                '' as texto_breve,
-                '' AS PosPed,
-                '' AS RespCtrPr,
-                '' as Origen,
-                Material AS Producto,
-                `Ctd.ped.` AS CtdPed,
-                `Valor neto` AS ValorNeto,
-                `Mon.` AS Moneda,
-                `Fecha Probable` AS FechaProbable,
-                'REVISIÓN MATERIAL 37' AS Estado,
-                '' as Motivo_Rechazo
-            FROM pedidos_revision_37
+UNION ALL
 
-            ORDER BY CAST(Pedido AS UNSIGNED) ASC, CAST(PosPed AS UNSIGNED) ASC;
+SELECT DISTINCT 
+    COALESCE(Nombre, '') AS Cliente,
+    Pedido,
+    '' AS texto_breve,
+    '' AS PosPed,
+    '' AS RespCtrPr,
+    '' AS Origen,
+    Material AS Producto,
+    `Ctd.ped.` AS CtdPed,
+    `Valor neto` AS ValorNeto,
+    `Mon.` AS Moneda,
+    `Fecha Probable` AS FechaProbable,
+    'REVISIÓN MATERIAL 37' AS Estado,
+    '' AS Motivo_Rechazo
+FROM pedidos_revision_37
+
+ORDER BY 
+    CAST(Pedido AS UNSIGNED) ASC, 
+    CAST(NULLIF(PosPed, '') AS UNSIGNED) ASC;
         ";
 
         $stmt = $pdo->query($sqlCabeceras);
@@ -150,8 +171,6 @@ try {
     }
 
     echo json_encode(["data" => $cabeceras], JSON_UNESCAPED_UNICODE);
-
 } catch (PDOException $e) {
     echo json_encode(["error" => $e->getMessage()]);
 }
-?>

@@ -108,6 +108,72 @@ def extraer_filas_tabla_rechazo(session, codigo_pedido):
 
     return posiciones_rechazadas
 
+import pymysql
+
+def guardar_rechazados_tabla_mysql(lista_rechazados, fecha_auditoria):
+    """
+    Inserta o actualiza las posiciones rechazadas detectadas en VA03
+    en la tabla 'historial_rechazados_va03'.
+    """
+    if not lista_rechazados:
+        return
+
+    conexion = pymysql.connect(
+        host='localhost',
+        user='root',
+        password='',
+        database='calculadora_pv'
+    )
+
+    try:
+        with conexion.cursor() as cursor:
+            # 1. Crear tabla si no existe
+            sql_crear_tabla = """
+                CREATE TABLE IF NOT EXISTS `historial_rechazados_va03` (
+                    `id` INT AUTO_INCREMENT PRIMARY KEY,
+                    `fecha_auditoria` DATE NOT NULL,
+                    `pedido` VARCHAR(20) NOT NULL,
+                    `posicion` VARCHAR(10) NOT NULL,
+                    `material` VARCHAR(50) NULL,
+                    `motivo_rechazo` VARCHAR(100) NULL,
+                    `fecha_registro` DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE KEY `uk_auditoria_pos` (`fecha_auditoria`, `pedido`, `posicion`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            """
+            cursor.execute(sql_crear_tabla)
+
+            # 2. Insertar registros evitando duplicados en el mismo día
+            sql_insert = """
+                INSERT INTO `historial_rechazados_va03` 
+                    (`fecha_auditoria`, `pedido`, `posicion`, `material`, `motivo_rechazo`)
+                VALUES (%s, %s, %s, %s, %s)
+                ON DUPLICATE KEY UPDATE
+                    `material` = VALUES(`material`),
+                    `motivo_rechazo` = VALUES(`motivo_rechazo`),
+                    `fecha_registro` = CURRENT_TIMESTAMP;
+            """
+
+            valores = [
+                (
+                    fecha_auditoria,
+                    reg['Pedido'],
+                    reg['PosPed'],
+                    reg.get('Material', ''),
+                    reg.get('Motivo_Rechazo', '')
+                )
+                for reg in lista_rechazados
+            ]
+
+            cursor.executemany(sql_insert, valores)
+            conexion.commit()
+
+            print(f"[MYSQL HISTORIAL] Se insertaron/actualizaron {cursor.rowcount} registros en 'historial_rechazados_va03'.")
+
+    except Exception as e:
+        print(f"[ERROR MYSQL HISTORIAL] No se pudo guardar en historial_rechazados_va03: {e}")
+        conexion.rollback()
+    finally:
+        conexion.close()
 def ejecutar_auditoria_diaria_va03(session, lista_pedidos, carpeta_base="PV/AUDITORIA"):
     fecha_hoy = datetime.now().strftime("%Y-%m-%d")
     
@@ -130,11 +196,9 @@ def ejecutar_auditoria_diaria_va03(session, lista_pedidos, carpeta_base="PV/AUDI
     print(f"[{datetime.now().strftime('%H:%M:%S')}] Iniciando auditoría de {len(lista_pedidos)} pedidos...")
 
     for idx, codigo in enumerate(lista_pedidos, 1):
-        # Extraer string plano del pedido
         codigo_str = str(codigo.get('Pedido') if isinstance(codigo, dict) else codigo).strip()
         print(f"  [{idx}/{len(lista_pedidos)}] Consultando VA03 - Pedido: {codigo_str}...")
 
-        # Extraer posiciones rechazadas desde SAP
         rechazados_pedido = extraer_filas_tabla_rechazo(session, codigo_str)
         
         if rechazados_pedido:
@@ -152,7 +216,6 @@ def ejecutar_auditoria_diaria_va03(session, lista_pedidos, carpeta_base="PV/AUDI
                     "Motivo_Rechazo": str(item.get('Motivo_Rechazo', '')).strip()
                 }
 
-                # CONTROL DE DUPLICADOS: Verificar si la posición ya existía en la lista de hoy
                 ya_existe = any(r['Pedido'] == ped_limpio and r['PosPed'] == pos_limpia for r in todos_los_rechazados)
                 
                 if not ya_existe:
@@ -161,11 +224,11 @@ def ejecutar_auditoria_diaria_va03(session, lista_pedidos, carpeta_base="PV/AUDI
 
         time.sleep(0.3)
 
-    # 2. GUARDAR JSON CONSOLIDADO REESCRIBIENDO LA LISTA COMPLETA ACUMULADA
+    # 2. GUARDAR JSON CONSOLIDADO
     with open(ruta_json, "w", encoding="utf-8") as f:
         json.dump(todos_los_rechazados, f, ensure_ascii=False, indent=4)
 
-    # 3. GUARDAR EN EL TXT EN MODO APPEND ('a') O CREAR CABECERA SI ES NUEVO
+    # 3. GUARDAR EN TXT
     txt_existe = os.path.exists(ruta_txt)
     with open(ruta_txt, "a", encoding="utf-8") as f:
         if not txt_existe:
@@ -179,11 +242,15 @@ def ejecutar_auditoria_diaria_va03(session, lista_pedidos, carpeta_base="PV/AUDI
     print(f" -> Archivo JSON: {ruta_json}")
     print(f" -> Archivo TXT:  {ruta_txt}")
 
-    # 4. ACTUALIZAR EN MYSQL ÚNICAMENTE LOS REGISTROS NUEVOS
+    # 4. OPERACIONES EN MYSQL
     if NUEVOS_RECHAZADOS:
+        # A) Actualizar la columna Motivo_Rechazo en la tabla operativa vista_productiva_bom
         actualizar_mysql_desde_lista(NUEVOS_RECHAZADOS)
+
+        # B) Guardar el historial de auditoría en la tabla dedicada
+        guardar_rechazados_tabla_mysql(NUEVOS_RECHAZADOS, fecha_hoy)
     else:
-        print("[INFO] No se encontraron nuevas posiciones de rechazo para actualizar en MySQL.")
+        print("[INFO] No se encontraron nuevas posiciones de rechazo para registrar en MySQL.")
 
     return todos_los_rechazados
 
