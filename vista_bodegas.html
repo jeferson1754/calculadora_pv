@@ -186,10 +186,22 @@
     /* =====================================================================
        UTILIDADES
        ===================================================================== */
-    function parseNum(v) {
+    function parseNum(v, umb) {
         if (v === null || v === undefined || v === '') return 0;
+        if (typeof v === 'number') return isNaN(v) ? 0 : v;
+
         var s = String(v).trim();
-        if (s.indexOf(',') > -1) s = s.replace(/\./g, '').replace(',', '.'); // 1.234,56
+        var u = String(umb || '').toUpperCase().trim();
+
+        if (s.indexOf(',') > -1) {
+            // Formato latino con coma decimal: "1.234,56" -> 1234.56
+            s = s.replace(/\./g, '').replace(',', '.');
+        } else if (u === 'MM' && /^[1-9]\d{0,2}(\.\d{3})+$/.test(s)) {
+            // En SAP los MM vienen como enteros con punto de miles: "7.035" -> 7035 mm
+            s = s.replace(/\./g, '');
+        }
+        // En M, M2, KG, etc., "5.244" conserva su punto decimal -> 5.244
+
         var n = parseFloat(s);
         return isNaN(n) ? 0 : n;
     }
@@ -312,13 +324,13 @@
             }
             if (!stock[mat].desc && r.Descripcion) stock[mat].desc = norm(r.Descripcion);
 
-            var libre = convertir(parseNum(r.StockLibre), umbOrig, umbFinal).valor;
+            var libre = convertir(parseNum(r.StockLibre, umbOrig), umbOrig, umbFinal).valor;
 
-            // Valor unitario ponderado: solo filas con stock y valor positivos
+           // Reemplaza esto:
             var valorFila = parseNum(r.ValorTotal);
-            if (libre > 0 && valorFila > 0) {
-                stock[mat].valorAcum += valorFila;
-                stock[mat].stockValAcum += libre;
+            if (valorFila > 0) {
+                // Si el valor ya viene reportado a nivel de material, no lo sumes, tómalo directo
+                stock[mat].valorAcum = valorFila;
             }
 
             if (esConforme) {
@@ -358,7 +370,7 @@
                     pedido: p.Pedido,
                     pos: p.PosPed,
                     cliente: p.Cliente,
-                    cantOrig: parseNum(c.CantidadTotal),
+                    cantOrig: parseNum(c.CantidadTotal, umbOrig),
                     umbOrig: umbOrig
                 });
             });
@@ -398,7 +410,8 @@
             var transitoTotal = s ? s.transitoTotal : 0;
 
             // Valor unitario ($ por UMB homologada) = Valor_Total / stock
-            var valorUnitario = (s && s.stockValAcum > 0) ? s.valorAcum / s.stockValAcum : 0;
+            // Mostrar directamente la suma de Valor_Total de la tabla
+            var valorUnitario = s ? s.valorAcum : 0;
 
             // Redondeo a 3 decimales para evitar ruido de coma flotante (MM -> M)
             reqTotal   = redondear(reqTotal, 3);
@@ -567,7 +580,7 @@
 
         columnas.push({ data: 'valorUnitario', className: 'text-end fw-semibold', render: function(d, t, r) {
             if (t !== 'display') return d;
-            if (d > 0) return '$ ' + fmt(d, 2) + ' <small class="text-muted">/' + r.umb + '</small>';
+            if (d > 0) return '$ ' + fmt(d, 2);
             return '<span class="text-muted">-</span>';
         } });
 

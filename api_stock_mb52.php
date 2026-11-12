@@ -187,10 +187,11 @@ try {
     }
 
     // Redondeo final y valor unitario por almacén
+    // Redondeo final y asignación directa de ValorTotal
     $data = array_map(function ($f) {
         $f['StockLibre']    = round($f['StockLibre'], 3);
         $f['ValorTotal']    = round($f['ValorTotal'], 2);
-        $f['ValorUnitario'] = $f['StockLibre'] > 0 ? round($f['ValorTotal'] / $f['StockLibre'], 4) : 0;
+        $f['ValorUnitario'] = $f['ValorTotal']; // Pasa directo el valor de la tabla
         return $f;
     }, array_values($agrupado));
 
