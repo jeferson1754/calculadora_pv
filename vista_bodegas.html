@@ -173,14 +173,17 @@
     };
 
     var UNIDADES = {
-        'MM': { b: 'M',  f: 0.001 },
-        'CM': { b: 'M',  f: 0.01  },
-        'M':  { b: 'M',  f: 1     },
-        'MT': { b: 'M',  f: 1     },
-        'KM': { b: 'M',  f: 1000  },
-        'G':  { b: 'KG', f: 0.001 },
-        'KG': { b: 'KG', f: 1     },
-        'TO': { b: 'KG', f: 1000  }
+        'MM':  { b: 'M',   f: 0.001  },
+        'CM':  { b: 'M',   f: 0.01   },
+        'M':   { b: 'M',   f: 1      },
+        'MT':  { b: 'M',   f: 1      },
+        'KM':  { b: 'M',   f: 1000   },
+        'MM2': { b: 'M2',  f: 0.000001 },
+        'CM2': { b: 'M2',  f: 0.0001 },
+        'M2':  { b: 'M2',  f: 1      },
+        'G':   { b: 'KG',  f: 0.001  },
+        'KG':  { b: 'KG',  f: 1      },
+        'TO':  { b: 'KG',  f: 1000   }
     };
 
     /* =====================================================================
@@ -196,8 +199,8 @@
         if (s.indexOf(',') > -1) {
             // Formato latino con coma decimal: "1.234,56" -> 1234.56
             s = s.replace(/\./g, '').replace(',', '.');
-        } else if (u === 'MM' && /^[1-9]\d{0,2}(\.\d{3})+$/.test(s)) {
-            // En SAP los MM vienen como enteros con punto de miles: "7.035" -> 7035 mm
+        } else if ((u === 'MM' || u === 'CM2') && /^[1-9]\d{0,2}(\.\d{3})+$/.test(s)) {
+            // En SAP los MM y CM2 enteros pueden venir con punto de miles: "7.035" -> 7035
             s = s.replace(/\./g, '');
         }
         // En M, M2, KG, etc., "5.244" conserva su punto decimal -> 5.244
@@ -240,7 +243,9 @@
     /* Normaliza unidades lineales a Metros (M) */
     function normalizarUnidad(umb) {
         var u = String(umb || '').toUpperCase().trim();
-        return (u === 'MM' || u === 'MT') ? 'M' : u;
+        if (u === 'MM' || u === 'MT') return 'M';
+        if (u === 'CM2' || u === 'MM2') return 'M2';
+        return u;
     }
 
     function norm(s) { return String(s === null || s === undefined ? '' : s).trim(); }
