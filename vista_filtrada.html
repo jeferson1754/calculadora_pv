@@ -243,6 +243,9 @@
         <!-- JS de ColReorder (Agregar al final junto a los demás scripts) -->
     <script src="https://cdn.datatables.net/colreorder/1.7.0/js/dataTables.colReorder.min.js"></script>
 
+    <!-- Librería SheetJS para exportar con subtablas BOM incluidas -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
     <script>
         var estadoExpandido = false;
 
@@ -370,10 +373,105 @@
                 "dom": '<"d-flex justify-content-between align-items-center mb-3"Bf>rt<"d-flex justify-content-between align-items-center mt-3"lip>',
                 "buttons": [
                     {
-                        extend: 'excelHtml5',
-                        text: '<i class="bi bi-file-earmark-excel me-1"></i> Descargar Base En Excel',
+                        text: '<i class="bi bi-file-earmark-excel me-1"></i> Descargar Base Con Detalle BOM',
                         className: 'btn btn-success btn-sm fw-bold',
-                        title: 'REVESOL_Vista_Operativa_Pedidos'
+                        action: function (e, dt, node, config) {
+                            var filasExcel = [];
+
+                            // Encabezado principal del pedido (12 columnas visibles)
+                            filasExcel.push([
+                                'Cliente', 'PV', 'Pos.', 'Convenio', 'RespCtrPr.', 'Código SAP',
+                                'Valor Total', 'Ctd.', 'Neto Unitario', 'Moneda', 'Fecha Probable', 'Estado'
+                            ]);
+
+                            // Recorrer únicamente las filas que cumplen los filtros actuales en pantalla
+                            dt.rows({ search: 'applied' }).every(function () {
+                                var r = this.data();
+
+                                var convenio = (r.Origen && String(r.Origen).trim() !== '') ? r.Origen : 'Spot';
+                                var netoTotal = parseFloat(String(r.ValorNeto || '0').replace(/\./g, '').replace(',', '.')) || 0;
+                                var cantidad = parseFloat(String(r.CtdPed || '0').replace(/\./g, '').replace(',', '.')) || 0;
+                                var netoUnitario = (cantidad > 0) ? Math.round(netoTotal / cantidad) : 0;
+
+                                // 1. Fila padre (Pedido)
+                                filasExcel.push([
+                                    r.Cliente || '',
+                                    r.Pedido || '',
+                                    r.PosPed || '',
+                                    convenio,
+                                    r.RespCtrPr || '-',
+                                    r.Producto || '',
+                                    Math.round(netoTotal),
+                                    cantidad,
+                                    netoUnitario,
+                                    r.Moneda || '',
+                                    r.FechaProbable || '',
+                                    r.Estado || ''
+                                ]);
+
+                                // 2. Subtabla BOM (si tiene componentes)
+                                if (r.componentes && r.componentes.length > 0) {
+                                    // Título de sección del desglose (igual que en la vista web)
+                                    filasExcel.push([
+                                        '',
+                                        'Desglose de Materiales Internos: ' + (r.texto_breve || '')
+                                    ]);
+
+                                    // Encabezados del detalle BOM
+                                    filasExcel.push([
+                                        '',
+                                        'Cód. Componente',
+                                        'Descripción Componente',
+                                        'Cant. Unitaria',
+                                        'UMB',
+                                        'Cant. Total Requerida'
+                                    ]);
+
+                                    // Filas de cada componente
+                                    r.componentes.forEach(function (c) {
+                                        var cantUnit = parseFloat(String(c.CantidadBOM || '0').replace(',', '.')) || 0;
+                                        var cantTotal = parseFloat(String(c.CantidadTotal || '0').replace(',', '.')) || 0;
+
+                                        filasExcel.push([
+                                            '',
+                                            c.Componente || '',
+                                            c.DescComponente || '',
+                                            cantUnit,
+                                            c.UMB || '',
+                                            cantTotal
+                                        ]);
+                                    });
+
+                                    // Fila en blanco para separar visualmente el siguiente pedido
+                                    filasExcel.push([]);
+                                } else {
+                                    filasExcel.push(['', 'Sin componentes BOM registrados (Material 37 o sin estructura).']);
+                                    filasExcel.push([]);
+                                }
+                            });
+
+                            // Crear libro y hoja Excel con ancho de columnas ajustado
+                            var wb = XLSX.utils.book_new();
+                            var ws = XLSX.utils.aoa_to_sheet(filasExcel);
+
+                            ws['!cols'] = [
+                                { wch: 34 }, // Cliente
+                                { wch: 16 }, // PV / Cód. Componente
+                                { wch: 42 }, // Pos. / Descripción Componente
+                                { wch: 15 }, // Convenio / Cant. Unitaria
+                                { wch: 12 }, // RespCtrPr. / UMB
+                                { wch: 22 }, // Código SAP / Cant. Total Requerida
+                                { wch: 16 }, // Valor Total
+                                { wch: 10 }, // Ctd.
+                                { wch: 16 }, // Neto Unitario
+                                { wch: 10 }, // Moneda
+                                { wch: 15 }, // Fecha Probable
+                                { wch: 16 }  // Estado
+                            ];
+
+                            XLSX.utils.book_append_sheet(wb, ws, 'Pedidos_Con_BOM');
+                            XLSX.writeFile(wb, 'REVESOL_Vista_Filtrada_Con_Detalle_BOM.xlsx');
+                        }
                     }
                 ],
                 "ajax": {
